@@ -1,2 +1,0 @@
-# sysgerenc
-Sistema de Gerenciamento

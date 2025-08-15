@@ -7,31 +7,37 @@ export default defineConfig({
   plugins: [
     react(),
     runtimeErrorOverlay(),
-    ...(process.env.NODE_ENV !== "production" &&
-    process.env.REPL_ID !== undefined
-      ? [
-          await import("@replit/vite-plugin-cartographer").then((m) =>
-            m.cartographer(),
-          ),
-        ]
-      : []),
+    // Remove o plugin específico do Replit para produção no Netlify
+    ...(process.env.NODE_ENV === "development" && process.env.REPL_ID
+      ? [await import("@replit/vite-plugin-cartographer").then(m => m.cartographer())]
+      : [])
   ],
   resolve: {
     alias: {
-      "@": path.resolve(import.meta.dirname, "client", "src"),
-      "@shared": path.resolve(import.meta.dirname, "shared"),
-      "@assets": path.resolve(import.meta.dirname, "attached_assets"),
-    },
+      "@": path.resolve(__dirname, "./client/src"),
+      "@shared": path.resolve(__dirname, "./shared"),
+      "@assets": path.resolve(__dirname, "./attached_assets")
+    }
   },
-  root: path.resolve(import.meta.dirname, "client"),
+  // Configuração essencial para o Netlify
+  root: "./client",
   build: {
-    outDir: path.resolve(import.meta.dirname, "dist/public"),
+    outDir: "../dist",  // Alterado para compatibilidade
     emptyOutDir: true,
+    rollupOptions: {
+      external: ["zustand"]  // Adiciona zustand como externo se necessário
+    }
   },
   server: {
     fs: {
       strict: true,
-      deny: ["**/.*"],
+      deny: ["*/."]
     },
+    port: 3000  // Porta explícita para evitar conflitos
   },
+  // Otimização para Netlify
+  base: "/",  // Garante caminhos absolutos
+  define: {
+    "process.env": process.env  // Compatibilidade com variáveis de ambiente
+  }
 });

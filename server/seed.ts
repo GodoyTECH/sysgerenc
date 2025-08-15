@@ -1,450 +1,387 @@
-/**
- * GodoySys - Seed de Dados Iniciais
- * 
- * Este script popula o banco de dados com dados de demonstração
- * incluindo empresa demo, usuários, produtos e pedidos de exemplo.
- */
-
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import { storage } from "./storage";
-import type { 
-  InsertCompany, 
-  InsertUser, 
-  InsertProductCategory, 
-  InsertProduct, 
-  InsertOrder 
-} from "@shared/schema";
 
-/**
- * Executa o seed de dados
- */
+// Função principal para executar o seed
 export async function runSeed() {
-  console.log("🌱 Iniciando seed de dados do GodoySys...");
-
   try {
-    // 1. Criar empresa demo
-    console.log("🏢 Criando empresa demo...");
-    const demoCompany: InsertCompany = {
+    console.log("🌱 Iniciando seed do banco de dados...");
+
+    // Criar empresa demo
+    const demoCompany = await storage.createCompany({
       name: "Restaurante Demo",
       email: "contato@restaurantedemo.com.br",
       phone: "(11) 99999-9999",
-      address: "Rua das Flores, 123 - Centro - São Paulo/SP",
+      address: "Rua das Delícias, 123 - Centro, São Paulo - SP",
       settings: {
-        currency: "BRL",
         timezone: "America/Sao_Paulo",
-        workingHours: { start: "08:00", end: "22:00" },
-        features: ["pdv", "kitchen", "chat", "reports", "multi_user"],
+        currency: "BRL",
+        taxRate: 0.1,
+        serviceCharge: 0.12,
+        defaultEstimatedTime: 30,
+        allowTableService: true,
+        allowDelivery: true,
+        allowTakeaway: true,
       },
-    };
+    });
 
-    const company = await storage.createCompany(demoCompany);
-    console.log(`✅ Empresa criada: ${company.name} (${company.id})`);
+    console.log(`✅ Empresa criada: ${demoCompany.name} (ID: ${demoCompany.id})`);
 
-    // 2. Criar usuários demo
-    console.log("👥 Criando usuários demo...");
-    const saltRounds = 10;
-
-    // Admin principal
-    const adminUser: InsertUser = {
-      companyId: company.id,
-      name: "Carlos Godoy",
-      email: "admin@restaurantedemo.com.br",
+    // Criar usuário administrador
+    const adminUser = await storage.createUser({
+      companyId: demoCompany.id,
       username: "admin",
-      password: await bcrypt.hash("123456", saltRounds),
+      email: "admin@restaurantedemo.com.br",
+      password: await bcrypt.hash("admin123", 10),
+      name: "Administrador Demo",
       role: "admin",
-      isActive: true,
-    };
-    const admin = await storage.createUser(adminUser);
-    console.log(`✅ Admin criado: ${admin.name} (${admin.username})`);
+    });
 
-    // Gerente
-    const managerUser: InsertUser = {
-      companyId: company.id,
-      name: "Ana Silva",
-      email: "gerente@restaurantedemo.com.br",
-      username: "gerente",
-      password: await bcrypt.hash("123456", saltRounds),
-      role: "manager",
-      isActive: true,
-    };
-    const manager = await storage.createUser(managerUser);
-    console.log(`✅ Gerente criado: ${manager.name} (${manager.username})`);
+    console.log(`✅ Usuário admin criado: ${adminUser.name} (ID: ${adminUser.id})`);
 
-    // Atendente
-    const attendantUser: InsertUser = {
-      companyId: company.id,
-      name: "João Santos",
-      email: "atendente@restaurantedemo.com.br",
+    // Criar usuário atendente
+    const attendantUser = await storage.createUser({
+      companyId: demoCompany.id,
       username: "atendente",
-      password: await bcrypt.hash("123456", saltRounds),
+      email: "atendente@restaurantedemo.com.br",
+      password: await bcrypt.hash("123456", 10),
+      name: "Maria Atendente",
       role: "attendant",
-      isActive: true,
-    };
-    const attendant = await storage.createUser(attendantUser);
-    console.log(`✅ Atendente criado: ${attendant.name} (${attendant.username})`);
+    });
 
-    // Cozinheiro
-    const kitchenUser: InsertUser = {
-      companyId: company.id,
-      name: "Maria Costa",
-      email: "cozinha@restaurantedemo.com.br",
+    console.log(`✅ Usuário atendente criado: ${attendantUser.name} (ID: ${attendantUser.id})`);
+
+    // Criar usuário da cozinha
+    const kitchenUser = await storage.createUser({
+      companyId: demoCompany.id,
       username: "cozinha",
-      password: await bcrypt.hash("123456", saltRounds),
+      email: "cozinha@restaurantedemo.com.br",
+      password: await bcrypt.hash("123456", 10),
+      name: "João Cozinheiro",
       role: "kitchen",
-      isActive: true,
-    };
-    const kitchen = await storage.createUser(kitchenUser);
-    console.log(`✅ Cozinheiro criado: ${kitchen.name} (${kitchen.username})`);
+    });
 
-    // 3. Criar categorias de produtos
-    console.log("📦 Criando categorias de produtos...");
-    
-    const categorias = [
-      {
+    console.log(`✅ Usuário cozinha criado: ${kitchenUser.name} (ID: ${kitchenUser.id})`);
+
+    // Criar categorias de produtos
+    const categories = await Promise.all([
+      storage.createCategory({
+        companyId: demoCompany.id,
         name: "Pratos Principais",
-        description: "Pratos principais do cardápio",
-        attributes: {
-          "tamanho": { type: "select", required: false, options: ["Pequeno", "Médio", "Grande"] },
-          "ingredientes": { type: "text", required: false },
-          "vegano": { type: "boolean", required: false },
-        },
-      },
-      {
+        description: "Refeições completas e substanciais",
+      }),
+      storage.createCategory({
+        companyId: demoCompany.id,
+        name: "Entradas",
+        description: "Aperitivos e entrada para começar bem a refeição",
+      }),
+      storage.createCategory({
+        companyId: demoCompany.id,
         name: "Bebidas",
-        description: "Bebidas e sucos",
-        attributes: {
-          "volume": { type: "select", required: true, options: ["300ml", "500ml", "1L"] },
-          "gelada": { type: "boolean", required: false },
-        },
-      },
-      {
+        description: "Sucos, refrigerantes e bebidas diversas",
+      }),
+      storage.createCategory({
+        companyId: demoCompany.id,
         name: "Sobremesas",
-        description: "Doces e sobremesas",
-        attributes: {
-          "diet": { type: "boolean", required: false },
-          "peso": { type: "number", required: false },
-        },
-      },
-    ];
+        description: "Doces e sobremesas para finalizar",
+      }),
+    ]);
 
-    const createdCategories = [];
-    for (const cat of categorias) {
-      const category: InsertProductCategory = {
-        companyId: company.id,
-        ...cat,
-      };
-      const created = await storage.createProductCategory(category);
-      createdCategories.push(created);
-      console.log(`✅ Categoria criada: ${created.name}`);
-    }
+    console.log(`✅ ${categories.length} categorias criadas`);
 
-    // 4. Criar produtos demo
-    console.log("🍽️ Criando produtos demo...");
-    
-    const produtos = [
+    // Criar produtos demo
+    const products = [
       // Pratos Principais
       {
-        categoryId: createdCategories[0].id,
+        companyId: demoCompany.id,
+        categoryId: categories[0].id,
         name: "Hambúrguer Artesanal",
-        description: "Hambúrguer 180g, pão brioche, queijo, alface, tomate",
-        price: "32.90",
+        description: "Hambúrguer 180g, queijo, bacon, alface, tomate e batata frita",
+        price: "28.90",
         cost: "15.50",
         stock: 25,
         minStock: 5,
-        attributes: { tamanho: "Médio", vegano: false },
+        attributes: {
+          ingredients: ["carne", "queijo", "bacon", "alface", "tomate"],
+          allergens: ["glúten", "lactose"],
+          preparationTime: 20,
+        },
       },
       {
-        categoryId: createdCategories[0].id,
-        name: "Pizza Margherita",
-        description: "Massa artesanal, molho de tomate, mussarela, manjericão",
-        price: "45.90",
+        companyId: demoCompany.id,
+        categoryId: categories[0].id,
+        name: "Lasanha à Bolonhesa",
+        description: "Lasanha tradicional com molho bolonhesa e queijo gratinado",
+        price: "32.50",
         cost: "18.00",
         stock: 15,
         minStock: 3,
-        attributes: { tamanho: "Grande", vegano: false },
+        attributes: {
+          ingredients: ["massa", "carne moída", "queijo", "molho de tomate"],
+          allergens: ["glúten", "lactose"],
+          preparationTime: 25,
+        },
       },
       {
-        categoryId: createdCategories[0].id,
-        name: "Salada Caesar",
-        description: "Alface romana, croutons, parmesão, molho caesar",
-        price: "28.50",
-        cost: "12.00",
-        stock: 30,
-        minStock: 8,
-        attributes: { tamanho: "Médio", vegano: false },
-      },
-      {
-        categoryId: createdCategories[0].id,
-        name: "Risotto de Camarão",
-        description: "Arroz arbóreo, camarões frescos, vinho branco",
-        price: "52.90",
+        companyId: demoCompany.id,
+        categoryId: categories[0].id,
+        name: "Peixe Grelhado",
+        description: "Salmão grelhado com legumes e arroz integral",
+        price: "42.00",
         cost: "28.00",
         stock: 12,
         minStock: 3,
-        attributes: { tamanho: "Grande", vegano: false },
+        attributes: {
+          ingredients: ["salmão", "legumes", "arroz integral"],
+          allergens: ["peixe"],
+          preparationTime: 18,
+        },
+      },
+      
+      // Entradas
+      {
+        companyId: demoCompany.id,
+        categoryId: categories[1].id,
+        name: "Bruschetta",
+        description: "Pão italiano com tomate, manjericão e azeite",
+        price: "18.50",
+        cost: "8.00",
+        stock: 30,
+        minStock: 8,
+        attributes: {
+          ingredients: ["pão", "tomate", "manjericão", "azeite"],
+          allergens: ["glúten"],
+          preparationTime: 8,
+        },
+      },
+      {
+        companyId: demoCompany.id,
+        categoryId: categories[1].id,
+        name: "Coxinha de Frango",
+        description: "Tradicional coxinha brasileira com frango desfiado",
+        price: "8.50",
+        cost: "3.50",
+        stock: 50,
+        minStock: 15,
+        attributes: {
+          ingredients: ["frango", "massa", "temperos"],
+          allergens: ["glúten"],
+          preparationTime: 12,
+        },
       },
       
       // Bebidas
       {
-        categoryId: createdCategories[1].id,
-        name: "Refrigerante Coca-Cola",
-        description: "Refrigerante cola gelado",
-        price: "8.50",
-        cost: "3.20",
-        stock: 48,
-        minStock: 12,
-        attributes: { volume: "500ml", gelada: true },
-      },
-      {
-        categoryId: createdCategories[1].id,
-        name: "Suco de Laranja Natural",
-        description: "Suco natural de laranja espremida na hora",
-        price: "12.90",
+        companyId: demoCompany.id,
+        categoryId: categories[2].id,
+        name: "Suco Natural de Laranja",
+        description: "Suco de laranja natural 500ml",
+        price: "12.00",
         cost: "4.50",
-        stock: 20,
-        minStock: 5,
-        attributes: { volume: "300ml", gelada: true },
-      },
-      {
-        categoryId: createdCategories[1].id,
-        name: "Água Mineral",
-        description: "Água mineral sem gás",
-        price: "4.50",
-        cost: "1.80",
-        stock: 35,
+        stock: 40,
         minStock: 10,
-        attributes: { volume: "500ml", gelada: true },
+        attributes: {
+          volume: "500ml",
+          natural: true,
+          preparationTime: 3,
+        },
       },
       {
-        categoryId: createdCategories[1].id,
-        name: "Cerveja Artesanal",
-        description: "Cerveja artesanal IPA gelada",
-        price: "18.90",
-        cost: "8.50",
-        stock: 24,
-        minStock: 6,
-        attributes: { volume: "500ml", gelada: true },
+        companyId: demoCompany.id,
+        categoryId: categories[2].id,
+        name: "Refrigerante Lata",
+        description: "Coca-Cola, Pepsi ou Guaraná 350ml",
+        price: "6.50",
+        cost: "2.80",
+        stock: 80,
+        minStock: 20,
+        attributes: {
+          volume: "350ml",
+          options: ["Coca-Cola", "Pepsi", "Guaraná"],
+          preparationTime: 1,
+        },
+      },
+      {
+        companyId: demoCompany.id,
+        categoryId: categories[2].id,
+        name: "Água Mineral",
+        description: "Água mineral sem gás 500ml",
+        price: "4.00",
+        cost: "1.50",
+        stock: 100,
+        minStock: 30,
+        attributes: {
+          volume: "500ml",
+          gasificada: false,
+          preparationTime: 1,
+        },
       },
       
-      // Sobremesas  
+      // Sobremesas
       {
-        categoryId: createdCategories[2].id,
+        companyId: demoCompany.id,
+        categoryId: categories[3].id,
         name: "Pudim de Leite",
-        description: "Pudim cremoso com calda de caramelo",
-        price: "15.90",
+        description: "Pudim cremoso de leite condensado com calda de caramelo",
+        price: "15.00",
         cost: "6.50",
-        stock: 18,
-        minStock: 4,
-        attributes: { diet: false, peso: 150 },
-      },
-      {
-        categoryId: createdCategories[2].id,
-        name: "Brownie com Sorvete",
-        description: "Brownie de chocolate com sorvete de baunilha",
-        price: "19.90",
-        cost: "8.00",
-        stock: 22,
+        stock: 20,
         minStock: 5,
-        attributes: { diet: false, peso: 200 },
+        attributes: {
+          ingredients: ["leite condensado", "ovos", "açúcar"],
+          allergens: ["lactose", "ovos"],
+          preparationTime: 5,
+        },
       },
       {
-        categoryId: createdCategories[2].id,
-        name: "Salada de Frutas",
-        description: "Mix de frutas frescas da estação",
-        price: "12.50",
-        cost: "5.20",
-        stock: 2, // Estoque baixo para demonstrar alerta
-        minStock: 8,
-        attributes: { diet: true, peso: 180 },
+        companyId: demoCompany.id,
+        categoryId: categories[3].id,
+        name: "Brigadeiro Gourmet",
+        description: "Brigadeiro artesanal com chocolate belga (unidade)",
+        price: "4.50",
+        cost: "1.80",
+        stock: 60,
+        minStock: 15,
+        attributes: {
+          ingredients: ["chocolate belga", "leite condensado", "manteiga"],
+          allergens: ["lactose"],
+          preparationTime: 2,
+        },
       },
     ];
 
-    const createdProducts = [];
-    for (const prod of produtos) {
-      const product: InsertProduct = {
-        companyId: company.id,
-        ...prod,
-        isActive: true,
-      };
-      const created = await storage.createProduct(product);
-      createdProducts.push(created);
-      console.log(`✅ Produto criado: ${created.name} - R$ ${created.price}`);
+    for (const productData of products) {
+      const product = await storage.createProduct(productData);
+      console.log(`✅ Produto criado: ${product.name} - R$ ${product.price}`);
     }
 
-    // 5. Criar pedidos demo
-    console.log("🧾 Criando pedidos demo...");
-    
-    const pedidosDemo = [
+    // Criar alguns pedidos demo para mostrar o sistema funcionando
+    const orders = [
       {
-        userId: attendant.id,
-        customerName: "Pedro Silva",
+        companyId: demoCompany.id,
+        userId: attendantUser.id,
+        customerName: "João Silva",
         customerPhone: "(11) 98765-4321",
-        table: "Mesa 1",
-        status: "delivered" as const,
-        items: [
-          {
-            productId: createdProducts[0].id, // Hambúrguer
-            name: createdProducts[0].name,
-            price: parseFloat(createdProducts[0].price),
-            quantity: 1,
-            notes: "Sem cebola",
-          },
-          {
-            productId: createdProducts[4].id, // Coca-Cola
-            name: createdProducts[4].name,
-            price: parseFloat(createdProducts[4].price),
-            quantity: 1,
-          },
-        ],
-        notes: "Cliente preferencial",
-      },
-      {
-        userId: attendant.id,
-        customerName: "Ana Costa",
-        customerPhone: "(11) 87654-3210",
-        table: "Mesa 3",
-        status: "preparing" as const,
-        items: [
-          {
-            productId: createdProducts[1].id, // Pizza
-            name: createdProducts[1].name,
-            price: parseFloat(createdProducts[1].price),
-            quantity: 1,
-          },
-          {
-            productId: createdProducts[7].id, // Cerveja
-            name: createdProducts[7].name,
-            price: parseFloat(createdProducts[7].price),
-            quantity: 2,
-          },
-        ],
-        notes: "Pizza bem assada",
-      },
-      {
-        userId: manager.id,
-        customerName: "Carlos Oliveira",
-        customerPhone: "(11) 76543-2109",
         table: "Mesa 5",
+        status: "preparing" as const,
+        paymentStatus: "paid" as const,
+        paymentMethod: "cartão",
+        subtotal: "47.40",
+        discount: "0.00",
+        tax: "4.74",
+        total: "52.14",
+        notes: "Sem cebola no hambúrguer",
+        estimatedTime: 25,
+      },
+      {
+        companyId: demoCompany.id,
+        userId: attendantUser.id,
+        customerName: "Maria Santos",
+        customerPhone: "(11) 97654-3210",
+        table: "Mesa 2",
+        status: "ready" as const,
+        paymentStatus: "paid" as const,
+        paymentMethod: "dinheiro",
+        subtotal: "18.50",
+        discount: "0.00",
+        tax: "1.85",
+        total: "20.35",
+        notes: "",
+        estimatedTime: 15,
+      },
+      {
+        companyId: demoCompany.id,
+        userId: attendantUser.id,
+        customerName: "Carlos Oliveira",
+        customerPhone: "(11) 96543-2109",
+        table: "Mesa 8",
         status: "pending" as const,
-        items: [
-          {
-            productId: createdProducts[2].id, // Salada Caesar
-            name: createdProducts[2].name,
-            price: parseFloat(createdProducts[2].price),
-            quantity: 1,
-          },
-          {
-            productId: createdProducts[5].id, // Suco
-            name: createdProducts[5].name,
-            price: parseFloat(createdProducts[5].price),
-            quantity: 1,
-          },
-          {
-            productId: createdProducts[8].id, // Pudim
-            name: createdProducts[8].name,
-            price: parseFloat(createdProducts[8].price),
-            quantity: 1,
-          },
-        ],
+        paymentStatus: "pending" as const,
+        paymentMethod: "",
+        subtotal: "74.50",
+        discount: "5.00",
+        tax: "6.95",
+        total: "76.45",
+        notes: "Peixe mal passado, sem sal no arroz",
+        estimatedTime: 30,
       },
     ];
 
-    for (const pedido of pedidosDemo) {
-      const subtotal = pedido.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-      const discount = 0;
-      const total = subtotal - discount;
-
-      const order: InsertOrder = {
-        companyId: company.id,
-        userId: pedido.userId,
-        customerName: pedido.customerName,
-        customerPhone: pedido.customerPhone,
-        table: pedido.table,
-        status: pedido.status,
-        items: pedido.items,
-        subtotal: subtotal.toFixed(2),
-        discount: discount.toFixed(2),
-        total: total.toFixed(2),
-        notes: pedido.notes || null,
-      };
-
-      const created = await storage.createOrder(order);
-      console.log(`✅ Pedido criado: #${created.id.slice(0, 8)} - ${created.customerName} - R$ ${created.total}`);
+    for (const orderData of orders) {
+      const order = await storage.createOrder(orderData);
+      console.log(`✅ Pedido criado: #${order.id} - ${order.customerName} - R$ ${order.total}`);
     }
 
-    // 6. Criar mensagens demo no chat
-    console.log("💬 Criando mensagens demo no chat...");
-    
-    const mensagensDemo = [
+    // Criar algumas mensagens de chat demo
+    const chatMessages = [
       {
-        userId: kitchen.id,
+        companyId: demoCompany.id,
+        userId: adminUser.id,
+        channel: "general" as const,
+        message: "Bem-vindos ao sistema GodoySys! 🎉",
+      },
+      {
+        companyId: demoCompany.id,
+        userId: attendantUser.id,
+        channel: "general" as const,
+        message: "Olá! Cliente da mesa 5 perguntou sobre o tempo do pedido.",
+      },
+      {
+        companyId: demoCompany.id,
+        userId: kitchenUser.id,
         channel: "kitchen" as const,
-        message: "Pedido #001 está quase pronto! 🍔",
+        message: "Pedido #12034 está quase pronto! Faltam 5 minutos.",
       },
       {
-        userId: attendant.id,
-        channel: "general" as const,
-        message: "Bom dia pessoal! Vamos começar mais um dia de trabalho! 😊",
-      },
-      {
-        userId: manager.id,
-        channel: "general" as const,
-        message: "Lembrando que hoje temos promoção de pizza até 18h",
-      },
-      {
-        userId: admin.id,
+        companyId: demoCompany.id,
+        userId: adminUser.id,
         channel: "support" as const,
-        message: "Sistema atualizado com sucesso. Relatórios disponíveis.",
+        message: "Sistema funcionando normalmente. Todos os módulos operacionais.",
       },
     ];
 
-    for (const msg of mensagensDemo) {
-      await storage.createChatMessage({
-        companyId: company.id,
-        userId: msg.userId,
-        channel: msg.channel,
-        message: msg.message,
-        metadata: {},
-      });
-      console.log(`✅ Mensagem criada: ${msg.channel} - ${msg.message.slice(0, 30)}...`);
+    for (const messageData of chatMessages) {
+      const message = await storage.createChatMessage(messageData);
+      console.log(`✅ Mensagem criada: ${message.message.substring(0, 30)}...`);
     }
 
-    // 7. Criar logs de auditoria iniciais
-    console.log("📋 Criando logs de auditoria iniciais...");
-    
+    // Criar alguns logs de auditoria iniciais
     await storage.createAuditLog({
-      companyId: company.id,
-      userId: admin.id,
-      action: "system_seed",
+      companyId: demoCompany.id,
+      userId: adminUser.id,
+      action: "seed_database",
       resource: "system",
       details: {
-        seedDate: new Date().toISOString(),
-        productsCreated: createdProducts.length,
-        usersCreated: 4,
-        ordersCreated: pedidosDemo.length,
-        categoriesCreated: createdCategories.length,
+        productsCreated: products.length,
+        usersCreated: 3,
+        categoriesCreated: categories.length,
+        ordersCreated: orders.length,
       },
       ipAddress: "127.0.0.1",
       userAgent: "GodoySys Seed Script",
     });
 
-    console.log("✅ Logs de auditoria criados");
-
-    // 8. Exibir resumo final
-    console.log("\n🎉 Seed concluído com sucesso!");
-    console.log("=" .repeat(50));
-    console.log(`🏢 Empresa: ${company.name}`);
-    console.log(`👥 Usuários criados: 4`);
-    console.log(`📦 Categorias criadas: ${createdCategories.length}`);
-    console.log(`🍽️ Produtos criados: ${createdProducts.length}`);
-    console.log(`🧾 Pedidos criados: ${pedidosDemo.length}`);
-    console.log("=" .repeat(50));
-    console.log("\n📝 Credenciais de acesso:");
-    console.log("👑 Admin: admin / 123456");
-    console.log("👔 Gerente: gerente / 123456");
-    console.log("👤 Atendente: atendente / 123456");
-    console.log("👨‍🍳 Cozinha: cozinha / 123456");
-    console.log("\n🌐 Acesse o sistema e faça login com qualquer uma das contas acima!");
+    console.log("🎉 Seed concluído com sucesso!");
+    console.log("\n📋 CREDENCIAIS DE ACESSO:");
+    console.log(`👨‍💼 Admin: username='admin', password='admin123'`);
+    console.log(`👩‍💼 Atendente: username='atendente', password='123456'`);
+    console.log(`👨‍🍳 Cozinha: username='cozinha', password='123456'`);
+    console.log(`🏢 Empresa: ${demoCompany.name}`);
+    console.log(`🔑 PIN Admin: ${process.env.ADMIN_MASTER_PIN || "1234"}`);
+    
+    return {
+      company: demoCompany,
+      users: {
+        admin: adminUser,
+        attendant: attendantUser,
+        kitchen: kitchenUser,
+      },
+      stats: {
+        products: products.length,
+        categories: categories.length,
+        orders: orders.length,
+        chatMessages: chatMessages.length,
+      },
+    };
 
   } catch (error) {
     console.error("❌ Erro durante o seed:", error);
@@ -456,7 +393,7 @@ export async function runSeed() {
 if (require.main === module) {
   runSeed()
     .then(() => {
-      console.log("🌱 Seed executado com sucesso!");
+      console.log("✅ Processo de seed finalizado");
       process.exit(0);
     })
     .catch((error) => {

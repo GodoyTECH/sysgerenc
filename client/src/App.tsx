@@ -1,197 +1,118 @@
-/**
- * GodoySys - Aplicação Principal React
- * 
- * Este componente gerencia o roteamento principal da aplicação,
- * proteção de rotas e layout geral do sistema.
- */
-
-import { Switch, Route, Redirect } from "wouter";
+import { Switch, Route } from "wouter";
 import { QueryClientProvider } from "@tanstack/react-query";
+import { queryClient } from "./lib/queryClient";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { useAuthStore } from "@/store/useAuthStore";
+import { useAuthStore } from "./store/auth";
 import { useEffect } from "react";
 
-// Importar páginas
-import Login from "@/pages/Login";
-import Dashboard from "@/pages/Dashboard";
-import PDV from "@/pages/PDV";
-import Orders from "@/pages/Orders";
-import Kitchen from "@/pages/Kitchen";
-import Chat from "@/pages/Chat";
-import Reports from "@/pages/Reports";
-import Products from "@/pages/Products";
-import Config from "@/pages/Config";
+// Páginas
+import Login from "@/pages/login";
+import Dashboard from "@/pages/dashboard";
+import PDV from "@/pages/pdv";
+import Orders from "@/pages/orders";
+import Kitchen from "@/pages/kitchen";
+import Chat from "@/pages/chat";
+import Products from "@/pages/products";
+import Reports from "@/pages/reports";
+import Config from "@/pages/config";
 import NotFound from "@/pages/not-found";
+import Layout from "@/components/Layout";
 
-// Importar serviços
-import { queryClient } from "@/lib/queryClient";
-import { initializeSocket } from "@/services/socket";
-import LoadingSpinner from "@/components/common/LoadingSpinner";
-
-// Layout com sidebar para páginas autenticadas
-import Sidebar from "@/components/layout/Sidebar";
-import Header from "@/components/layout/Header";
-
-/**
- * Componente de rota protegida
- * Verifica se o usuário está autenticado antes de renderizar
- */
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading } = useAuthStore();
-
-  // Mostrar loading enquanto verifica autenticação
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <LoadingSpinner size="lg" />
-      </div>
-    );
+  const { user } = useAuthStore();
+  
+  if (!user) {
+    return <Login />;
   }
-
-  // Redirecionar para login se não autenticado
-  if (!isAuthenticated) {
-    return <Redirect to="/login" />;
-  }
-
-  return <>{children}</>;
+  
+  return <Layout>{children}</Layout>;
 }
 
-/**
- * Layout principal da aplicação autenticada
- */
-function MainLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="flex h-screen bg-gray-50">
-      {/* Sidebar de navegação */}
-      <Sidebar />
-      
-      {/* Conteúdo principal */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header superior */}
-        <Header />
-        
-        {/* Área de conteúdo */}
-        <main className="flex-1 overflow-y-auto">
-          {children}
-        </main>
-      </div>
-    </div>
-  );
-}
-
-/**
- * Componente de roteamento principal
- */
 function Router() {
-  const { isAuthenticated, checkAuth } = useAuthStore();
-
-  // Verificar autenticação ao carregar a aplicação
-  useEffect(() => {
-    checkAuth();
-  }, [checkAuth]);
-
-  // Inicializar WebSocket apenas quando autenticado
-  useEffect(() => {
-    if (isAuthenticated) {
-      initializeSocket();
-    }
-  }, [isAuthenticated]);
+  const { user } = useAuthStore();
 
   return (
     <Switch>
-      {/* Rota de login (pública) */}
+      {/* Rota de login */}
       <Route path="/login">
-        {isAuthenticated ? <Redirect to="/dashboard" /> : <Login />}
+        {user ? <Dashboard /> : <Login />}
       </Route>
 
-      {/* Rota raiz - redireciona baseado na autenticação */}
+      {/* Rotas protegidas */}
       <Route path="/">
-        {isAuthenticated ? <Redirect to="/dashboard" /> : <Redirect to="/login" />}
+        <ProtectedRoute>
+          <Dashboard />
+        </ProtectedRoute>
       </Route>
 
-      {/* Rotas protegidas com layout */}
       <Route path="/dashboard">
         <ProtectedRoute>
-          <MainLayout>
-            <Dashboard />
-          </MainLayout>
+          <Dashboard />
         </ProtectedRoute>
       </Route>
 
       <Route path="/pdv">
         <ProtectedRoute>
-          <MainLayout>
-            <PDV />
-          </MainLayout>
+          <PDV />
         </ProtectedRoute>
       </Route>
 
       <Route path="/orders">
         <ProtectedRoute>
-          <MainLayout>
-            <Orders />
-          </MainLayout>
+          <Orders />
         </ProtectedRoute>
       </Route>
 
       <Route path="/kitchen">
         <ProtectedRoute>
-          <MainLayout>
-            <Kitchen />
-          </MainLayout>
+          <Kitchen />
         </ProtectedRoute>
       </Route>
 
       <Route path="/chat">
         <ProtectedRoute>
-          <MainLayout>
-            <Chat />
-          </MainLayout>
-        </ProtectedRoute>
-      </Route>
-
-      <Route path="/reports">
-        <ProtectedRoute>
-          <MainLayout>
-            <Reports />
-          </MainLayout>
+          <Chat />
         </ProtectedRoute>
       </Route>
 
       <Route path="/products">
         <ProtectedRoute>
-          <MainLayout>
-            <Products />
-          </MainLayout>
+          <Products />
+        </ProtectedRoute>
+      </Route>
+
+      <Route path="/reports">
+        <ProtectedRoute>
+          <Reports />
         </ProtectedRoute>
       </Route>
 
       <Route path="/config">
         <ProtectedRoute>
-          <MainLayout>
-            <Config />
-          </MainLayout>
+          <Config />
         </ProtectedRoute>
       </Route>
 
-      {/* Rota 404 */}
-      <Route>
-        <NotFound />
-      </Route>
+      {/* Fallback para 404 */}
+      <Route component={NotFound} />
     </Switch>
   );
 }
 
-/**
- * Componente principal da aplicação
- */
 function App() {
+  const { initializeAuth } = useAuthStore();
+
+  useEffect(() => {
+    // Inicializar autenticação ao carregar a aplicação
+    initializeAuth();
+  }, [initializeAuth]);
+
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <Router />
         <Toaster />
+        <Router />
       </TooltipProvider>
     </QueryClientProvider>
   );

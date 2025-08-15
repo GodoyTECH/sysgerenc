@@ -1,342 +1,203 @@
-/**
- * GodoySys - Serviço de Email
- * 
- * Este módulo gerencia o envio de emails para relatórios,
- * notificações e outras funcionalidades do sistema.
- */
+import nodemailer from "nodemailer";
 
-import nodemailer from 'nodemailer';
+// Configurações do e-mail baseadas nas variáveis de ambiente
+const EMAIL_SERVICE = process.env.EMAIL_SERVICE || "gmail";
+const EMAIL_USER = process.env.EMAIL_USER || "";
+const EMAIL_PASS = process.env.EMAIL_PASS || "";
 
-// Interface para dados de email
-interface EmailData {
-  to: string;
-  subject: string;
-  type: 'reports' | 'notification' | 'welcome';
-  data: any;
-}
-
-// Interface para dados de relatório
-interface ReportEmailData {
-  companyName: string;
-  reportDate: string;
-  summary: {
-    totalOrders: number;
-    totalProducts: number;
-    totalUsers: number;
-    completedOrders: number;
-    totalSales: string;
-  };
-  csvReports: { [key: string]: string };
-}
-
-/**
- * Configura o transporter do nodemailer
- */
-function createTransporter() {
-  const emailService = process.env.EMAIL_SERVICE || 'gmail';
-  const emailUser = process.env.EMAIL_USER;
-  const emailPass = process.env.EMAIL_PASS;
-
-  if (!emailUser || !emailPass) {
-    console.warn("⚠️ Credenciais de email não configuradas. Emails serão simulados.");
-    return null;
-  }
-
-  try {
-    const transporter = nodemailer.createTransporter({
-      service: emailService,
-      auth: {
-        user: emailUser,
-        pass: emailPass,
-      },
-    });
-
-    console.log(`📧 Transporter de email configurado: ${emailService}`);
-    return transporter;
-  } catch (error) {
-    console.error("❌ Erro ao configurar transporter de email:", error);
-    return null;
-  }
-}
-
-/**
- * Gera template HTML para email de relatórios
- */
-function generateReportsTemplate(data: ReportEmailData): string {
-  const { companyName, reportDate, summary, csvReports } = data;
-  
-  return `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8">
-      <title>GodoySys - Relatórios</title>
-      <style>
-        body { 
-          font-family: Arial, sans-serif; 
-          line-height: 1.6; 
-          color: #333; 
-          max-width: 600px; 
-          margin: 0 auto; 
-          padding: 20px; 
-        }
-        .header { 
-          background: #1F2937; 
-          color: white; 
-          padding: 20px; 
-          text-align: center; 
-          border-radius: 8px 8px 0 0; 
-        }
-        .content { 
-          background: #f9fafb; 
-          padding: 20px; 
-          border: 1px solid #e5e7eb; 
-        }
-        .summary { 
-          background: white; 
-          padding: 15px; 
-          border-radius: 8px; 
-          margin: 15px 0; 
-        }
-        .metric { 
-          display: inline-block; 
-          margin: 10px 15px 10px 0; 
-          padding: 10px; 
-          background: #3B82F6; 
-          color: white; 
-          border-radius: 6px; 
-          min-width: 120px; 
-          text-align: center; 
-        }
-        .metric-label { 
-          display: block; 
-          font-size: 12px; 
-          opacity: 0.9; 
-        }
-        .metric-value { 
-          display: block; 
-          font-size: 18px; 
-          font-weight: bold; 
-          margin-top: 5px; 
-        }
-        .files { 
-          background: white; 
-          padding: 15px; 
-          border-radius: 8px; 
-          margin: 15px 0; 
-        }
-        .file-item { 
-          padding: 8px 0; 
-          border-bottom: 1px solid #e5e7eb; 
-        }
-        .footer { 
-          text-align: center; 
-          color: #666; 
-          font-size: 12px; 
-          margin-top: 20px; 
-          padding-top: 20px; 
-          border-top: 1px solid #e5e7eb; 
-        }
-        .logo { 
-          font-size: 24px; 
-          font-weight: bold; 
-        }
-      </style>
-    </head>
-    <body>
-      <div class="header">
-        <div class="logo">GodoySys</div>
-        <h2>Relatórios Completos</h2>
-        <p>${companyName} - ${reportDate}</p>
-      </div>
-      
-      <div class="content">
-        <h3>📊 Resumo Executivo</h3>
-        <div class="summary">
-          <div class="metric">
-            <span class="metric-label">Total de Pedidos</span>
-            <span class="metric-value">${summary.totalOrders}</span>
-          </div>
-          <div class="metric">
-            <span class="metric-label">Pedidos Entregues</span>
-            <span class="metric-value">${summary.completedOrders}</span>
-          </div>
-          <div class="metric">
-            <span class="metric-label">Total de Vendas</span>
-            <span class="metric-value">R$ ${summary.totalSales}</span>
-          </div>
-          <div class="metric">
-            <span class="metric-label">Produtos</span>
-            <span class="metric-value">${summary.totalProducts}</span>
-          </div>
-          <div class="metric">
-            <span class="metric-label">Usuários</span>
-            <span class="metric-value">${summary.totalUsers}</span>
-          </div>
-        </div>
-        
-        <h3>📋 Arquivos em Anexo</h3>
-        <div class="files">
-          <p>Os seguintes relatórios foram gerados e estão anexados a este email:</p>
-          ${Object.keys(csvReports).map(key => `
-            <div class="file-item">
-              <strong>${key.replace('_', ' ').toUpperCase()}.csv</strong> - 
-              ${csvReports[key].split('\n').length - 1} registros
-            </div>
-          `).join('')}
-        </div>
-        
-        <div style="background: #FEF3C7; padding: 15px; border-radius: 8px; border-left: 4px solid #F59E0B;">
-          <strong>⚠️ Importante:</strong> 
-          Estes relatórios contêm informações confidenciais da empresa. 
-          Mantenha-os seguros e não compartilhe com pessoas não autorizadas.
-        </div>
-      </div>
-      
-      <div class="footer">
-        <p>GodoySys - Sistema de Gerenciamento Empresarial</p>
-        <p>Este email foi gerado automaticamente em ${new Date().toLocaleString('pt-BR')}</p>
-      </div>
-    </body>
-    </html>
-  `;
-}
-
-/**
- * Gera template HTML para email de notificação
- */
-function generateNotificationTemplate(data: any): string {
-  return `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8">
-      <title>GodoySys - Notificação</title>
-      <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: #1F2937; color: white; padding: 15px; text-align: center; }
-        .content { padding: 20px; background: #f9fafb; }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="header">
-          <h2>GodoySys - Notificação</h2>
-        </div>
-        <div class="content">
-          <h3>${data.title || 'Notificação do Sistema'}</h3>
-          <p>${data.message || 'Uma nova notificação foi gerada pelo sistema.'}</p>
-          <p><strong>Data:</strong> ${new Date().toLocaleString('pt-BR')}</p>
-        </div>
-      </div>
-    </body>
-    </html>
-  `;
-}
-
-/**
- * Envia um email
- */
-export async function sendEmail(emailData: EmailData): Promise<boolean> {
-  const transporter = createTransporter();
-  
-  // Se não há transporter configurado, simular envio
-  if (!transporter) {
-    console.log(`📧 [SIMULADO] Email enviado para ${emailData.to}`);
-    console.log(`   Assunto: ${emailData.subject}`);
-    console.log(`   Tipo: ${emailData.type}`);
-    
-    if (emailData.type === 'reports') {
-      console.log(`   Relatórios: ${Object.keys((emailData.data as ReportEmailData).csvReports).join(', ')}`);
-    }
-    
-    return true;
-  }
-
-  try {
-    let html = '';
-    let attachments: any[] = [];
-
-    // Gerar conteúdo baseado no tipo
-    switch (emailData.type) {
-      case 'reports':
-        html = generateReportsTemplate(emailData.data as ReportEmailData);
-        
-        // Adicionar CSVs como anexos
-        const csvReports = (emailData.data as ReportEmailData).csvReports;
-        attachments = Object.entries(csvReports).map(([name, content]) => ({
-          filename: `${name}.csv`,
-          content: content,
-          contentType: 'text/csv; charset=utf-8',
-        }));
-        break;
-        
-      case 'notification':
-        html = generateNotificationTemplate(emailData.data);
-        break;
-        
-      default:
-        html = `<p>${emailData.data.message || 'Email enviado pelo GodoySys'}</p>`;
-    }
-
-    // Configurar email
-    const mailOptions = {
-      from: process.env.EMAIL_USER,
-      to: emailData.to,
-      subject: emailData.subject,
-      html: html,
-      attachments: attachments,
-    };
-
-    // Enviar email
-    const result = await transporter.sendMail(mailOptions);
-    
-    console.log(`✅ Email enviado com sucesso para ${emailData.to}`);
-    console.log(`   Message ID: ${result.messageId}`);
-    
-    return true;
-
-  } catch (error) {
-    console.error("❌ Erro ao enviar email:", error);
-    return false;
-  }
-}
-
-/**
- * Envia email de boas-vindas para novo usuário
- */
-export async function sendWelcomeEmail(userEmail: string, userName: string, companyName: string): Promise<boolean> {
-  return await sendEmail({
-    to: userEmail,
-    subject: `Bem-vindo ao GodoySys - ${companyName}`,
-    type: 'welcome',
-    data: {
-      userName,
-      companyName,
-      message: `Olá ${userName}, sua conta foi criada com sucesso no sistema GodoySys da empresa ${companyName}.`,
+// Criar transportador do nodemailer
+const createTransporter = () => {
+  return nodemailer.createTransporter({
+    service: EMAIL_SERVICE,
+    auth: {
+      user: EMAIL_USER,
+      pass: EMAIL_PASS,
     },
   });
+};
+
+// Função para enviar relatórios por e-mail
+export async function sendReportsEmail(recipientEmail: string, csvData: string): Promise<void> {
+  try {
+    const transporter = createTransporter();
+    
+    // Gerar nome do arquivo com data atual
+    const currentDate = new Date().toISOString().split('T')[0];
+    const filename = `relatorios_godoy_sys_${currentDate}.csv`;
+    
+    const mailOptions = {
+      from: EMAIL_USER,
+      to: recipientEmail,
+      subject: `GodoySys - Relatórios ${currentDate}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <div style="background: linear-gradient(135deg, #1F2937 0%, #3B82F6 100%); color: white; padding: 30px; text-align: center;">
+            <h1 style="margin: 0; font-size: 28px;">📊 GodoySys</h1>
+            <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">Sistema de Gerenciamento</p>
+          </div>
+          
+          <div style="padding: 30px; background: #f9f9f9;">
+            <h2 style="color: #1F2937; margin-top: 0;">Relatórios Gerados</h2>
+            
+            <p>Olá,</p>
+            
+            <p>Seus relatórios do GodoySys foram gerados com sucesso e estão em anexo neste e-mail.</p>
+            
+            <div style="background: white; padding: 20px; border-radius: 8px; border-left: 4px solid #3B82F6; margin: 20px 0;">
+              <h3 style="margin: 0 0 10px 0; color: #1F2937;">📄 Conteúdo do Relatório:</h3>
+              <ul style="margin: 10px 0; padding-left: 20px; color: #666;">
+                <li>Vendas e métricas de performance</li>
+                <li>Pedidos por status e período</li>
+                <li>Produtos mais vendidos</li>
+                <li>Análise de estoque</li>
+                <li>Logs de auditoria</li>
+              </ul>
+            </div>
+            
+            <div style="background: #EFF6FF; padding: 15px; border-radius: 6px; margin: 20px 0;">
+              <p style="margin: 0; color: #1D4ED8; font-size: 14px;">
+                💡 <strong>Dica:</strong> Você pode abrir o arquivo CSV no Excel, Google Sheets ou qualquer editor de planilhas.
+              </p>
+            </div>
+            
+            <p style="color: #666; margin-top: 30px;">
+              Data de geração: <strong>${new Date().toLocaleDateString('pt-BR', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              })}</strong>
+            </p>
+          </div>
+          
+          <div style="background: #1F2937; color: white; padding: 20px; text-align: center; font-size: 14px;">
+            <p style="margin: 0;">© ${new Date().getFullYear()} GodoySys - Sistema de Gerenciamento</p>
+            <p style="margin: 5px 0 0 0; opacity: 0.7;">Este e-mail foi gerado automaticamente pelo sistema.</p>
+          </div>
+        </div>
+      `,
+      attachments: [
+        {
+          filename: filename,
+          content: csvData,
+          contentType: 'text/csv; charset=utf-8',
+        },
+      ],
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log('E-mail de relatórios enviado:', info.messageId);
+    
+  } catch (error) {
+    console.error('Erro ao enviar e-mail de relatórios:', error);
+    throw new Error('Falha ao enviar relatórios por e-mail');
+  }
 }
 
-/**
- * Envia notificação de estoque baixo
- */
-export async function sendLowStockAlert(adminEmails: string[], products: any[], companyName: string): Promise<boolean> {
-  const productList = products.map(p => `${p.name} (Estoque: ${p.stock})`).join(', ');
-  
-  const promises = adminEmails.map(email =>
-    sendEmail({
-      to: email,
-      subject: `Alerta de Estoque Baixo - ${companyName}`,
-      type: 'notification',
-      data: {
-        title: 'Alerta de Estoque Baixo',
-        message: `Os seguintes produtos estão com estoque baixo: ${productList}`,
-      },
-    })
-  );
+// Função para enviar e-mail de boas-vindas
+export async function sendWelcomeEmail(recipientEmail: string, userName: string, companyName: string): Promise<void> {
+  try {
+    const transporter = createTransporter();
+    
+    const mailOptions = {
+      from: EMAIL_USER,
+      to: recipientEmail,
+      subject: `Bem-vindo ao GodoySys - ${companyName}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <div style="background: linear-gradient(135deg, #1F2937 0%, #3B82F6 100%); color: white; padding: 30px; text-align: center;">
+            <h1 style="margin: 0; font-size: 28px;">🎉 Bem-vindo ao GodoySys!</h1>
+            <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">Sistema de Gerenciamento</p>
+          </div>
+          
+          <div style="padding: 30px; background: #f9f9f9;">
+            <h2 style="color: #1F2937; margin-top: 0;">Olá, ${userName}!</h2>
+            
+            <p>Sua conta foi criada com sucesso na empresa <strong>${companyName}</strong>.</p>
+            
+            <div style="background: white; padding: 20px; border-radius: 8px; border-left: 4px solid #10B981; margin: 20px 0;">
+              <h3 style="margin: 0 0 10px 0; color: #1F2937;">🚀 Próximos Passos:</h3>
+              <ol style="margin: 10px 0; padding-left: 20px; color: #666;">
+                <li>Faça login no sistema usando suas credenciais</li>
+                <li>Configure seu perfil e preferências</li>
+                <li>Explore as funcionalidades disponíveis</li>
+                <li>Entre em contato com o administrador se tiver dúvidas</li>
+              </ol>
+            </div>
+            
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="#" style="background: #3B82F6; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+                Acessar Sistema
+              </a>
+            </div>
+          </div>
+          
+          <div style="background: #1F2937; color: white; padding: 20px; text-align: center; font-size: 14px;">
+            <p style="margin: 0;">© ${new Date().getFullYear()} GodoySys - Sistema de Gerenciamento</p>
+          </div>
+        </div>
+      `,
+    };
 
-  const results = await Promise.all(promises);
-  return results.every(result => result);
+    const info = await transporter.sendMail(mailOptions);
+    console.log('E-mail de boas-vindas enviado:', info.messageId);
+    
+  } catch (error) {
+    console.error('Erro ao enviar e-mail de boas-vindas:', error);
+    throw new Error('Falha ao enviar e-mail de boas-vindas');
+  }
+}
+
+// Função para enviar alertas de estoque baixo
+export async function sendLowStockAlert(recipientEmails: string[], products: any[]): Promise<void> {
+  try {
+    const transporter = createTransporter();
+    
+    const productsList = products.map(p => 
+      `<li>${p.name} - Estoque atual: <strong style="color: #EF4444;">${p.stock}</strong> (Mínimo: ${p.minStock})</li>`
+    ).join('');
+    
+    const mailOptions = {
+      from: EMAIL_USER,
+      to: recipientEmails,
+      subject: '⚠️ Alerta: Produtos com Estoque Baixo - GodoySys',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <div style="background: linear-gradient(135deg, #EF4444 0%, #F59E0B 100%); color: white; padding: 30px; text-align: center;">
+            <h1 style="margin: 0; font-size: 28px;">⚠️ Alerta de Estoque</h1>
+            <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">GodoySys</p>
+          </div>
+          
+          <div style="padding: 30px; background: #f9f9f9;">
+            <h2 style="color: #1F2937; margin-top: 0;">Produtos com Estoque Baixo</h2>
+            
+            <p>Os seguintes produtos estão com estoque abaixo do nível mínimo configurado:</p>
+            
+            <div style="background: #FEF2F2; padding: 20px; border-radius: 8px; border-left: 4px solid #EF4444; margin: 20px 0;">
+              <ul style="margin: 0; padding-left: 20px; color: #666;">
+                ${productsList}
+              </ul>
+            </div>
+            
+            <p style="color: #666;">
+              <strong>Recomendação:</strong> Verifique o estoque destes produtos e providencie reposição quando necessário.
+            </p>
+          </div>
+          
+          <div style="background: #1F2937; color: white; padding: 20px; text-align: center; font-size: 14px;">
+            <p style="margin: 0;">© ${new Date().getFullYear()} GodoySys - Sistema de Gerenciamento</p>
+          </div>
+        </div>
+      `,
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log('Alerta de estoque baixo enviado:', info.messageId);
+    
+  } catch (error) {
+    console.error('Erro ao enviar alerta de estoque:', error);
+    throw new Error('Falha ao enviar alerta de estoque baixo');
+  }
 }

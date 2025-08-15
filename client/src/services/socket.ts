@@ -1,359 +1,196 @@
-/**
- * GodoySys - Serviço de WebSocket
- * 
- * Este módulo gerencia conexões WebSocket para funcionalidades
- * em tempo real como chat e atualizações de pedidos.
- */
+import { useAuthStore } from '@/store/auth';
+import { useOrdersStore } from '@/store/orders';
+import { useChatStore } from '@/store/chat';
 
-import { useAuthStore } from '@/store/useAuthStore';
-import { useChatStore } from '@/store/useChatStore';
-import { useOrderStore } from '@/store/useOrderStore';
-import { toast } from '@/hooks/use-toast';
+class WebSocketService {
+  private ws: WebSocket | null = null;
+  private reconnectAttempts = 0;
+  private maxReconnectAttempts = 5;
+  private reconnectInterval = 5000; // 5 segundos
+  private heartbeatInterval: NodeJS.Timeout | null = null;
+  private isConnected = false;
 
-// Interface para mensagens WebSocket
-interface WSMessage {
-  type: string;
-  data: any;
-  timestamp?: string;
-}
-
-// Estado da conexão WebSocket
-let socket: WebSocket | null = null;
-let reconnectAttempts = 0;
-let maxReconnectAttempts = 5;
-let reconnectTimeout: NodeJS.Timeout | null = null;
-let isConnecting = false;
-
-/**
- * Obtém URL do WebSocket baseada no ambiente
- */
-function getWebSocketUrl(): string {
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const host = window.location.host;
-  return `${protocol}//${host}/ws`;
-}
-
-/**
- * Conecta ao WebSocket
- */
-export function connectSocket(): Promise<boolean> {
-  return new Promise((resolve) => {
-    if (socket && socket.readyState === WebSocket.OPEN) {
-      console.log('🔌 WebSocket já conectado');
-      resolve(true);
-      return;
-    }
-
-    if (isConnecting) {
-      console.log('🔌 WebSocket já está conectando...');
-      resolve(false);
-      return;
-    }
-
-    isConnecting = true;
-    const wsUrl = getWebSocketUrl();
-    const { tokens } = useAuthStore.getState();
-
-    if (!tokens?.accessToken) {
-      console.warn('⚠️ Token não encontrado para WebSocket');
-      isConnecting = false;
-      resolve(false);
+  // Inicializar conexão WebSocket
+  connect() {
+    const { user } = useAuthStore.getState();
+    
+    if (!user) {
+      console.log('Usuário não autenticado, não conectando ao WebSocket');
       return;
     }
 
     try {
-      console.log('🔌 Conectando WebSocket:', wsUrl);
-      socket = new WebSocket(wsUrl);
-
-      socket.onopen = () => {
-        console.log('🔌 WebSocket conectado');
-        isConnecting = false;
-        reconnectAttempts = 0;
-
-        // Autenticar com token
-        sendMessage({
-          type: 'auth',
-          data: { token: tokens.accessToken },
-        });
-
-        // Atualizar estado do chat
-        useChatStore.getState().setConnectionStatus(true);
+      // Determinar protocolo baseado no protocolo HTTP atual
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${window.location.host}/ws`;
+      
+      this.ws = new WebSocket(wsUrl);
+      
+      this.ws.onopen = () => {
+        console.log('🔗 Conexão WebSocket estabelecida');
+        this.isConnected = true;
+        this.reconnectAttempts = 0;
         
-        resolve(true);
+        // Inscrever-se para atualizações da empresa
+        this.send({
+          type: 'SUBSCRIBE_COMPANY',
+          data: { companyId: user.companyId },
+        });
+        
+        // Iniciar heartbeat
+        this.startHeartbeat();
       };
-
-      socket.onmessage = (event) => {
+      
+      this.ws.onmessage = (event) => {
         try {
-          const message: WSMessage = JSON.parse(event.data);
-          handleMessage(message);
+          const message = JSON.parse(event.data);
+          this.handleMessage(message);
         } catch (error) {
-          console.error('❌ Erro ao processar mensagem WebSocket:', error);
+          console.error('Erro ao processar mensagem WebSocket:', error);
         }
       };
-
-      socket.onclose = (event) => {
-        console.log('🔌 WebSocket desconectado:', event.code, event.reason);
-        isConnecting = false;
-        socket = null;
+      
+      this.ws.onclose = () => {
+        console.log('🔌 Conexão WebSocket fechada');
+        this.isConnected = false;
+        this.stopHeartbeat();
         
-        // Atualizar estado do chat
-        useChatStore.getState().setConnectionStatus(false);
-
-        // Tentar reconectar se não foi fechado intencionalmente
-        if (event.code !== 1000 && reconnectAttempts < maxReconnectAttempts) {
-          scheduleReconnect();
-        } else if (reconnectAttempts >= maxReconnectAttempts) {
-          toast({
-            title: 'Conexão Perdida',
-            description: 'Não foi possível reconectar. Recarregue a página.',
-            variant: 'destructive',
-          });
+        // Tentar reconectar se não foi fechamento intencional
+        if (this.reconnectAttempts < this.maxReconnectAttempts) {
+          this.reconnectAttempts++;
+          console.log(`Tentando reconectar... (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+          
+          setTimeout(() => {
+            this.connect();
+          }, this.reconnectInterval);
+        } else {
+          console.error('Máximo de tentativas de reconexão atingido');
         }
-
-        resolve(false);
       };
-
-      socket.onerror = (error) => {
-        console.error('❌ Erro WebSocket:', error);
-        isConnecting = false;
-        resolve(false);
+      
+      this.ws.onerror = (error) => {
+        console.error('Erro na conexão WebSocket:', error);
       };
-
+      
     } catch (error) {
-      console.error('❌ Erro ao criar WebSocket:', error);
-      isConnecting = false;
-      resolve(false);
+      console.error('Erro ao conectar WebSocket:', error);
     }
-  });
-}
-
-/**
- * Desconecta do WebSocket
- */
-export function disconnectSocket() {
-  if (reconnectTimeout) {
-    clearTimeout(reconnectTimeout);
-    reconnectTimeout = null;
   }
 
-  if (socket) {
-    console.log('🔌 Desconectando WebSocket...');
-    socket.close(1000, 'Logout');
-    socket = null;
+  // Desconectar WebSocket
+  disconnect() {
+    this.stopHeartbeat();
+    
+    if (this.ws) {
+      this.ws.close();
+      this.ws = null;
+      this.isConnected = false;
+    }
   }
 
-  useChatStore.getState().setConnectionStatus(false);
-}
-
-/**
- * Envia mensagem pelo WebSocket
- */
-export function sendMessage(message: WSMessage): boolean {
-  if (!socket || socket.readyState !== WebSocket.OPEN) {
-    console.warn('⚠️ WebSocket não conectado, não foi possível enviar mensagem');
-    return false;
-  }
-
-  try {
-    socket.send(JSON.stringify({
-      ...message,
-      timestamp: new Date().toISOString(),
-    }));
-    return true;
-  } catch (error) {
-    console.error('❌ Erro ao enviar mensagem WebSocket:', error);
-    return false;
-  }
-}
-
-/**
- * Entra em um canal de chat
- */
-export function joinChannel(channel: string): boolean {
-  return sendMessage({
-    type: 'join_channel',
-    data: { channel },
-  });
-}
-
-/**
- * Sai de um canal de chat
- */
-export function leaveChannel(channel: string): boolean {
-  return sendMessage({
-    type: 'leave_channel',
-    data: { channel },
-  });
-}
-
-/**
- * Agenda tentativa de reconexão
- */
-function scheduleReconnect() {
-  if (reconnectTimeout) {
-    clearTimeout(reconnectTimeout);
-  }
-
-  const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000); // Exponential backoff, max 30s
-  reconnectAttempts++;
-
-  console.log(`🔄 Tentativa de reconexão ${reconnectAttempts}/${maxReconnectAttempts} em ${delay}ms`);
-
-  reconnectTimeout = setTimeout(() => {
-    connectSocket();
-  }, delay);
-}
-
-/**
- * Processa mensagens recebidas do WebSocket
- */
-function handleMessage(message: WSMessage) {
-  console.log('📨 WebSocket mensagem recebida:', message.type);
-
-  switch (message.type) {
-    case 'auth_success':
-      console.log('✅ WebSocket autenticado:', message.data.username);
-      
-      // Entrar nos canais padrão
-      joinChannel('general');
-      joinChannel('support');
-      
-      // Se usuário tem acesso à cozinha, entrar no canal
-      const { user } = useAuthStore.getState();
-      if (user && ['admin', 'manager', 'kitchen'].includes(user.role)) {
-        joinChannel('kitchen');
-      }
-      break;
-
-    case 'channel_joined':
-      console.log(`📺 Entrou no canal: #${message.data.channel}`);
-      break;
-
-    case 'channel_left':
-      console.log(`📺 Saiu do canal: #${message.data.channel}`);
-      break;
-
-    case 'chat_message':
-      // Nova mensagem de chat
-      const { channel, message: chatMessage } = message.data;
-      useChatStore.getState().addMessage(chatMessage);
-      
-      // Mostrar notificação se não está no canal ativo
-      const { activeChannel } = useChatStore.getState();
-      if (channel !== activeChannel) {
-        toast({
-          title: `#${channel}`,
-          description: `${chatMessage.user?.name}: ${chatMessage.message}`,
-          duration: 3000,
-        });
-      }
-      break;
-
-    case 'order_update':
-      // Atualização de pedido
-      const orderData = message.data;
-      console.log('🧾 Atualização de pedido recebida:', orderData.id);
-      
-      // Atualizar store de pedidos
-      useOrderStore.getState().fetchOrders();
-      
-      // Mostrar notificação para mudanças de status importantes
-      if (['ready', 'delivered'].includes(orderData.status)) {
-        toast({
-          title: 'Pedido Atualizado',
-          description: `Pedido ${orderData.id.slice(0, 8)} está ${orderData.status === 'ready' ? 'pronto' : 'entregue'}`,
-        });
-      }
-      break;
-
-    case 'user_online':
-      // Usuário ficou online
-      const onlineUser = message.data;
-      console.log('👤 Usuário online:', onlineUser.name);
-      break;
-
-    case 'user_offline':
-      // Usuário ficou offline
-      const offlineUser = message.data;
-      console.log('👤 Usuário offline:', offlineUser.name);
-      break;
-
-    case 'ping':
-      // Responder com pong
-      sendMessage({ type: 'pong', data: {} });
-      break;
-
-    case 'pong':
-      // Pong recebido, conexão ativa
-      break;
-
-    case 'error':
-      console.error('❌ Erro WebSocket:', message.data.message);
-      toast({
-        title: 'Erro de Conexão',
-        description: message.data.message,
-        variant: 'destructive',
-      });
-      break;
-
-    default:
-      console.log('⚠️ Tipo de mensagem WebSocket desconhecido:', message.type);
-  }
-}
-
-/**
- * Verifica se WebSocket está conectado
- */
-export function isSocketConnected(): boolean {
-  return socket !== null && socket.readyState === WebSocket.OPEN;
-}
-
-/**
- * Obtém estado da conexão WebSocket
- */
-export function getSocketState(): string {
-  if (!socket) return 'disconnected';
-  
-  switch (socket.readyState) {
-    case WebSocket.CONNECTING: return 'connecting';
-    case WebSocket.OPEN: return 'connected';
-    case WebSocket.CLOSING: return 'closing';
-    case WebSocket.CLOSED: return 'disconnected';
-    default: return 'unknown';
-  }
-}
-
-/**
- * Inicializa conexão WebSocket (chamada após login)
- */
-export async function initializeSocket(): Promise<boolean> {
-  const { isAuthenticated } = useAuthStore.getState();
-  
-  if (!isAuthenticated) {
-    console.log('🔌 Usuário não autenticado, não conectando WebSocket');
-    return false;
-  }
-
-  console.log('🚀 Inicializando WebSocket...');
-  return await connectSocket();
-}
-
-/**
- * Mantém conexão ativa com ping periódico
- */
-export function startHeartbeat() {
-  const heartbeatInterval = setInterval(() => {
-    if (isSocketConnected()) {
-      sendMessage({ type: 'ping', data: {} });
+  // Enviar mensagem via WebSocket
+  send(message: any) {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify(message));
     } else {
-      clearInterval(heartbeatInterval);
+      console.warn('WebSocket não está conectado');
     }
-  }, 30000); // Ping a cada 30 segundos
+  }
 
-  return heartbeatInterval;
+  // Processar mensagens recebidas
+  private handleMessage(message: any) {
+    switch (message.type) {
+      case 'NEW_ORDER':
+        console.log('📋 Novo pedido recebido:', message.data);
+        // Atualizar store de pedidos
+        useOrdersStore.getState().fetchOrders();
+        
+        // Mostrar notificação (pode implementar um toast aqui)
+        this.showNotification('Novo Pedido', `Pedido #${message.data.id} recebido`);
+        break;
+        
+      case 'ORDER_STATUS_UPDATE':
+        console.log('📝 Status do pedido atualizado:', message.data);
+        // Atualizar store de pedidos
+        useOrdersStore.getState().fetchOrders();
+        break;
+        
+      case 'CHAT_MESSAGE':
+        console.log('💬 Nova mensagem do chat:', message.data);
+        // Adicionar mensagem ao store de chat
+        useChatStore.getState().addMessageFromWebSocket(message.data);
+        break;
+        
+      case 'LOW_STOCK_ALERT':
+        console.log('⚠️ Alerta de estoque baixo:', message.data);
+        this.showNotification('Estoque Baixo', `${message.data.productName} está com estoque baixo`);
+        break;
+        
+      case 'PONG':
+        // Resposta do heartbeat
+        break;
+        
+      default:
+        console.log('Mensagem WebSocket não reconhecida:', message);
+    }
+  }
+
+  // Sistema de heartbeat para manter conexão viva
+  private startHeartbeat() {
+    this.heartbeatInterval = setInterval(() => {
+      if (this.isConnected) {
+        this.send({ type: 'PING' });
+      }
+    }, 30000); // 30 segundos
+  }
+
+  private stopHeartbeat() {
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = null;
+    }
+  }
+
+  // Mostrar notificação do sistema (se suportado pelo navegador)
+  private showNotification(title: string, body: string) {
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification(title, {
+        body,
+        icon: '/favicon.ico',
+        badge: '/favicon.ico',
+      });
+    }
+  }
+
+  // Verificar se está conectado
+  isSocketConnected(): boolean {
+    return this.isConnected;
+  }
 }
 
-// Iniciar heartbeat automaticamente
-if (typeof window !== 'undefined') {
-  startHeartbeat();
+// Instância singleton do WebSocket
+export const wsService = new WebSocketService();
+
+// Hook para usar o WebSocket em componentes React
+export function useWebSocket() {
+  return {
+    connect: () => wsService.connect(),
+    disconnect: () => wsService.disconnect(),
+    send: (message: any) => wsService.send(message),
+    isConnected: () => wsService.isSocketConnected(),
+  };
+}
+
+// Inicializar WebSocket quando o usuário fizer login
+useAuthStore.subscribe((state) => {
+  if (state.user && !wsService.isSocketConnected()) {
+    wsService.connect();
+  } else if (!state.user && wsService.isSocketConnected()) {
+    wsService.disconnect();
+  }
+});
+
+// Solicitar permissão para notificações quando o módulo for carregado
+if ('Notification' in window && Notification.permission === 'default') {
+  Notification.requestPermission();
 }

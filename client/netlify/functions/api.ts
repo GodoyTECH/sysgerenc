@@ -17,7 +17,7 @@
 
 import express from "express";
 import serverless from "serverless-http";
-import { attachRoutes } from "../../server/routes"; // ✅ ajustado caminho
+import { attachRoutes } from "../server/routes"; // ✅ corrigido caminho
 
 // Cria instância do Express
 const app = express();

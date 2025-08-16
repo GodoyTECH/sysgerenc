@@ -3,8 +3,7 @@ import react from "@vitejs/plugin-react"
 import path from "path"
 
 export default defineConfig({
-  // Raiz já é a pasta client, então não precisa repetir
-  root: ".",
+  root: ".", // já é a pasta client
   plugins: [react()],
   resolve: {
     alias: {
@@ -12,11 +11,8 @@ export default defineConfig({
     },
   },
   build: {
-    outDir: "dist", // saída fica em client/dist
-    emptyOutDir: true,
-    rollupOptions: {
-      external: ["zustand", "zustand/middleware"],
-    },
+    outDir: "dist",   // saída final vai para client/dist
+    emptyOutDir: true // limpa antes de buildar
   },
   server: {
     port: 3000,

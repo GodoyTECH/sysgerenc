@@ -1,17 +1,19 @@
-import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
-import path from "path";
+import { defineConfig } from "vite"
+import react from "@vitejs/plugin-react"
+import path from "path"
 
 export default defineConfig({
-  // ⚙️ Netlify: Vite vai rodar a partir da pasta "client"
-  root: path.resolve(__dirname, "client"),
+  // Raiz já é a pasta client, então não precisa repetir
+  root: ".",
   plugins: [react()],
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./client/src"),
+      "@": path.resolve(__dirname, "./src"),
     },
   },
-  build: { outDir: "../dist",
+  build: {
+    outDir: "dist", // saída fica em client/dist
+    emptyOutDir: true,
     rollupOptions: {
       external: ["zustand", "zustand/middleware"],
     },
@@ -19,4 +21,4 @@ export default defineConfig({
   server: {
     port: 3000,
   },
-});
+})

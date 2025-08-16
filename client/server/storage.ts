@@ -1,164 +1,139 @@
 // client/server/storage.ts
 
-/**
- * GodoySys – Storage Layer (Banco de Dados)
- *
- * 🔹 Este módulo centraliza todas as operações no Postgres.
- * 🔹 É usado pelo routes.ts.
- */
-
-import { db } from "./db"; // conexão postgres (via drizzle/pg)
-import {
-  users,
-  companies,
-  products,
-  orders,
-  chatMessages,
-} from "../shared/schema";
+import { db } from "./db";
+import * as schema from "../shared/schema";
 import { eq, and, desc } from "drizzle-orm";
 
-// ===================== USUÁRIOS =====================
-export const storage = {
-  async getUserByUsername(username: string) {
-    const [user] = await db
-      .select()
-      .from(users)
-      .where(eq(users.username, username));
-    return user || null;
-  },
+// ================= USERS =================
+export async function getUserByUsername(username: string) {
+  const [user] = await db
+    .select()
+    .from(schema.users)
+    .where(eq(schema.users.username, username))
+    .limit(1);
+  return user || null;
+}
 
-  async getUser(userId: string) {
-    const [user] = await db.select().from(users).where(eq(users.id, userId));
-    return user || null;
-  },
+export async function getUser(id: string) {
+  const [user] = await db
+    .select()
+    .from(schema.users)
+    .where(eq(schema.users.id, id))
+    .limit(1);
+  return user || null;
+}
 
-  async createUser(userData: any) {
-    const [user] = await db.insert(users).values(userData).returning();
-    return user;
-  },
+export async function getUsersByCompany(companyId: string) {
+  return db.select().from(schema.users).where(eq(schema.users.companyId, companyId));
+}
 
-  async updateUserRefreshToken(userId: string, refreshToken: string | null) {
-    await db.update(users).set({ refreshToken }).where(eq(users.id, userId));
-  },
+export async function createUser(userData: typeof schema.insertUserSchema._type) {
+  const [user] = await db.insert(schema.users).values(userData).returning();
+  return user;
+}
 
-  async updateUserLastLogin(userId: string) {
-    await db
-      .update(users)
-      .set({ lastLogin: new Date() })
-      .where(eq(users.id, userId));
-  },
+export async function updateUserRefreshToken(userId: string, refreshToken: string | null) {
+  await db.update(schema.users)
+    .set({ refreshToken })
+    .where(eq(schema.users.id, userId));
+}
 
-  async getUsersByCompany(companyId: string) {
-    return await db.select().from(users).where(eq(users.companyId, companyId));
-  },
+export async function updateUserLastLogin(userId: string) {
+  await db.update(schema.users)
+    .set({ lastLogin: new Date() })
+    .where(eq(schema.users.id, userId));
+}
 
-  // ===================== EMPRESAS =====================
-  async getCompany(companyId: string) {
-    const [company] = await db
-      .select()
-      .from(companies)
-      .where(eq(companies.id, companyId));
-    return company || null;
-  },
+// ================= COMPANIES =================
+export async function getCompany(companyId: string) {
+  const [company] = await db
+    .select()
+    .from(schema.companies)
+    .where(eq(schema.companies.id, companyId))
+    .limit(1);
+  return company || null;
+}
 
-  async updateCompanySettings(companyId: string, settings: any) {
-    const [company] = await db
-      .update(companies)
-      .set({ settings })
-      .where(eq(companies.id, companyId))
-      .returning();
-    return company;
-  },
+export async function updateCompanySettings(companyId: string, settings: any) {
+  const [company] = await db
+    .update(schema.companies)
+    .set({ settings })
+    .where(eq(schema.companies.id, companyId))
+    .returning();
+  return company;
+}
 
-  // ===================== PRODUTOS =====================
-  async getProductsByCompany(companyId: string) {
-    return await db
-      .select()
-      .from(products)
-      .where(eq(products.companyId, companyId));
-  },
+// ================= PRODUCTS =================
+export async function getProductsByCompany(companyId: string) {
+  return db
+    .select()
+    .from(schema.products)
+    .where(eq(schema.products.companyId, companyId));
+}
 
-  async createProduct(productData: any) {
-    const [product] = await db.insert(products).values(productData).returning();
-    return product;
-  },
+export async function createProduct(productData: typeof schema.insertProductSchema._type) {
+  const [product] = await db.insert(schema.products).values(productData).returning();
+  return product;
+}
 
-  // ===================== PEDIDOS =====================
-  async getOrdersByCompany(params: {
-    companyId: string;
-    status?: string;
-    date?: string;
-    limit?: number;
-  }) {
-    let query = db.select().from(orders).where(eq(orders.companyId, params.companyId));
+// ================= ORDERS =================
+export async function getOrdersByCompany({
+  companyId,
+  status,
+  date,
+  limit,
+}: {
+  companyId: string;
+  status?: string;
+  date?: string;
+  limit?: number;
+}) {
+  let query = db.select().from(schema.orders).where(eq(schema.orders.companyId, companyId));
 
-    if (params.status) {
-      query = db
-        .select()
-        .from(orders)
-        .where(and(eq(orders.companyId, params.companyId), eq(orders.status, params.status)));
-    }
+  if (status) {
+    query = query.where(eq(schema.orders.status, status));
+  }
+  if (date) {
+    query = query.where(eq(schema.orders.date, date));
+  }
 
-    if (params.date) {
-      const dateObj = new Date(params.date);
-      query = db
-        .select()
-        .from(orders)
-        .where(and(eq(orders.companyId, params.companyId), eq(orders.date, dateObj)));
-    }
+  return query.orderBy(desc(schema.orders.date)).limit(limit || 50);
+}
 
-    return await query.limit(params.limit || 50);
-  },
+export async function createOrder(orderData: typeof schema.insertOrderSchema._type) {
+  const [order] = await db.insert(schema.orders).values(orderData).returning();
+  return order;
+}
 
-  async createOrder(orderData: any) {
-    const [order] = await db.insert(orders).values(orderData).returning();
-    return order;
-  },
+// ================= CHAT =================
+export async function getChatMessages(companyId: string, channel: string, limit: number) {
+  return db
+    .select()
+    .from(schema.chatMessages)
+    .where(and(eq(schema.chatMessages.companyId, companyId), eq(schema.chatMessages.channel, channel)))
+    .orderBy(desc(schema.chatMessages.createdAt))
+    .limit(limit);
+}
 
-  // ===================== CHAT =====================
-  async getChatMessages(companyId: string, channel: string, limit: number) {
-    return await db
-      .select()
-      .from(chatMessages)
-      .where(
-        and(
-          eq(chatMessages.companyId, companyId),
-          eq(chatMessages.channel, channel)
-        )
-      )
-      .orderBy(desc(chatMessages.createdAt))
-      .limit(limit);
-  },
+export async function createChatMessage(messageData: typeof schema.chatMessages.$inferInsert) {
+  const [message] = await db.insert(schema.chatMessages).values(messageData).returning();
+  return message;
+}
 
-  async createChatMessage(data: any) {
-    const [message] = await db.insert(chatMessages).values(data).returning();
-    return message;
-  },
+// ================= REPORTS =================
+export async function getDashboardMetrics(companyId: string) {
+  const [usersCount] = await db
+    .select({ count: schema.users.id })
+    .from(schema.users)
+    .where(eq(schema.users.companyId, companyId));
 
-  // ===================== DASHBOARD =====================
-  async getDashboardMetrics(companyId: string) {
-    const totalUsers = await db
-      .select()
-      .from(users)
-      .where(eq(users.companyId, companyId));
+  const [ordersCount] = await db
+    .select({ count: schema.orders.id })
+    .from(schema.orders)
+    .where(eq(schema.orders.companyId, companyId));
 
-    const totalProducts = await db
-      .select()
-      .from(products)
-      .where(eq(products.companyId, companyId));
-
-    const totalOrders = await db
-      .select()
-      .from(orders)
-      .where(eq(orders.companyId, companyId));
-
-    return {
-      users: totalUsers.length,
-      products: totalProducts.length,
-      orders: totalOrders.length,
-    };
-  },
-};
-
-
-export const storage = new DatabaseStorage();
+  return {
+    users: usersCount?.count || 0,
+    orders: ordersCount?.count || 0,
+  };
+}

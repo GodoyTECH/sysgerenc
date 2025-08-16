@@ -1,9 +1,7 @@
 import { useAuthStore } from '@/store/auth';
 
 // Configuração base da API
-
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || '/.netlify/functions/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/.netlify/functions/api';
 
 // Função para fazer requisições HTTP com autenticação
 export async function apiRequest(
@@ -11,7 +9,7 @@ export async function apiRequest(
   endpoint: string,
   data?: unknown
 ): Promise<Response> {
-  const { accessToken, refreshToken, logout } = useAuthStore.getState(); // ❌ antes chamava refreshAuth, corrigi p/ refreshToken
+  const { accessToken, refreshAuth, logout } = useAuthStore.getState();
 
   const url = `${API_BASE_URL}${endpoint}`;
   const headers: Record<string, string> = {
@@ -30,7 +28,7 @@ export async function apiRequest(
   };
 
   // Adicionar body se houver dados
-  if (data) {
+  if (data !== undefined) {
     config.body = JSON.stringify(data);
   }
 
@@ -41,12 +39,15 @@ export async function apiRequest(
     if ((response.status === 401 || response.status === 403) && accessToken) {
       console.log('Token expirado, tentando renovar...');
 
-      const refreshSuccess = await refreshToken(); // ❌ antes: refreshAuth → corrigi
+      const refreshSuccess = await refreshAuth();
       if (refreshSuccess) {
         // Tentar a requisição novamente com o novo token
         const newToken = useAuthStore.getState().accessToken;
-        headers['Authorization'] = `Bearer ${newToken}`;
-
+        if (newToken) {
+          headers['Authorization'] = `Bearer ${newToken}`;
+        } else {
+          delete headers['Authorization'];
+        }
         response = await fetch(url, { ...config, headers });
       } else {
         // Refresh falhou, fazer logout
@@ -57,15 +58,18 @@ export async function apiRequest(
 
     // Verificar se a resposta é bem-sucedida
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      const errorMessage =
-        errorData.message || `Erro ${response.status}: ${response.statusText}`;
-      throw new Error(errorMessage);
+      // tentar extrair mensagem da API
+      let errMsg = `Erro ${response.status}: ${response.statusText}`;
+      try {
+        const errorData = await response.json();
+        if (errorData?.message) errMsg = errorData.message;
+      } catch {}
+      throw new Error(errMsg);
     }
 
     return response;
-  } catch (error) {
-    if (error instanceof TypeError && error.message.includes('fetch')) {
+  } catch (error: any) {
+    if (error instanceof TypeError && String(error.message).includes('fetch')) {
       throw new Error('Erro de conexão. Verifique sua internet.');
     }
     throw error;
@@ -73,32 +77,18 @@ export async function apiRequest(
 }
 
 // Função utilitária para download de arquivos
-export async function downloadFile(
-  endpoint: string,
-  filename?: string
-): Promise<void> {
-  try {
-    const response = await apiRequest('GET', endpoint);
+export async function downloadFile(endpoint: string, filename?: string): Promise<void> {
+  const response = await apiRequest('GET', endpoint);
+  const blob = await response.blob();
 
-    if (!response.ok) {
-      throw new Error('Erro ao baixar arquivo');
-    }
-
-    const blob = await response.blob();
-    const url = window.URL.createObjectURL(blob);
-
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename || 'download';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    window.URL.revokeObjectURL(url);
-  } catch (error) {
-    console.error('Erro no download:', error);
-    throw error;
-  }
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename || 'download';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  window.URL.revokeObjectURL(url);
 }
 
 // Função utilitária para upload de arquivos
@@ -107,23 +97,20 @@ export async function uploadFile(
   file: File,
   additionalData?: Record<string, any>
 ): Promise<Response> {
-  const { accessToken, refreshToken, logout } = useAuthStore.getState(); // ❌ corrigido: refreshAuth → refreshToken
+  const { accessToken, refreshAuth, logout } = useAuthStore.getState();
 
   const url = `${API_BASE_URL}${endpoint}`;
   const formData = new FormData();
-
   formData.append('file', file);
 
   // Adicionar dados adicionais
   if (additionalData) {
     Object.entries(additionalData).forEach(([key, value]) => {
-      formData.append(key, JSON.stringify(value));
+      formData.append(key, typeof value === 'string' ? value : JSON.stringify(value));
     });
   }
 
   const headers: Record<string, string> = {};
-
-  // Adicionar token de autorização se disponível
   if (accessToken) {
     headers['Authorization'] = `Bearer ${accessToken}`;
   }
@@ -135,52 +122,44 @@ export async function uploadFile(
     credentials: 'include',
   };
 
-  try {
-    let response = await fetch(url, config);
+  let response = await fetch(url, config);
 
-    // Tentar renovar token se recebeu 401/403
-    if ((response.status === 401 || response.status === 403) && accessToken) {
-      const refreshSuccess = await refreshToken(); // ❌ corrigido
-      if (refreshSuccess) {
-        const newToken = useAuthStore.getState().accessToken;
+  if ((response.status === 401 || response.status === 403) && accessToken) {
+    const refreshSuccess = await refreshAuth();
+    if (refreshSuccess) {
+      const newToken = useAuthStore.getState().accessToken;
+      if (newToken) {
         headers['Authorization'] = `Bearer ${newToken}`;
-
-        response = await fetch(url, { ...config, headers });
       } else {
-        logout();
-        throw new Error('Sessão expirada. Faça login novamente.');
+        delete headers['Authorization'];
       }
+      response = await fetch(url, { ...config, headers });
+    } else {
+      logout();
+      throw new Error('Sessão expirada. Faça login novamente.');
     }
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      const errorMessage =
-        errorData.message || `Erro ${response.status}: ${response.statusText}`;
-      throw new Error(errorMessage);
-    }
-
-    return response;
-  } catch (error) {
-    if (error instanceof TypeError && error.message.includes('fetch')) {
-      throw new Error('Erro de conexão. Verifique sua internet.');
-    }
-    throw error;
   }
+
+  if (!response.ok) {
+    let errMsg = `Erro ${response.status}: ${response.statusText}`;
+    try {
+      const errorData = await response.json();
+      if (errorData?.message) errMsg = errorData.message;
+    } catch {}
+    throw new Error(errMsg);
+  }
+
+  return response;
 }
 
-// Hooks customizados para diferentes tipos de requisições
+// Facade
 export const api = {
-  // Métodos HTTP básicos
   get: (endpoint: string) => apiRequest('GET', endpoint),
-  post: (endpoint: string, data?: unknown) =>
-    apiRequest('POST', endpoint, data),
-  put: (endpoint: string, data?: unknown) =>
-    apiRequest('PUT', endpoint, data),
-  patch: (endpoint: string, data?: unknown) =>
-    apiRequest('PATCH', endpoint, data),
+  post: (endpoint: string, data?: unknown) => apiRequest('POST', endpoint, data),
+  put: (endpoint: string, data?: unknown) => apiRequest('PUT', endpoint, data),
+  patch: (endpoint: string, data?: unknown) => apiRequest('PATCH', endpoint, data),
   delete: (endpoint: string) => apiRequest('DELETE', endpoint),
 
-  // Utilitários específicos
   download: downloadFile,
   upload: uploadFile,
 };

@@ -43,7 +43,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
         set({ isLoading: true, error: null });
         
         try {
-          const response = await apiRequest('POST', '/api/auth/login', {
+          const response = await apiRequest('POST', '/auth/login', {
             username,
             password,
           });
@@ -74,10 +74,9 @@ export const useAuthStore = create<AuthState & AuthActions>()(
       },
 
       logout: () => {
-        // Fazer logout no servidor se houver token
         const { accessToken } = get();
         if (accessToken) {
-          apiRequest('POST', '/api/auth/logout').catch(() => {
+          apiRequest('POST', '/auth/logout').catch(() => {
             // Ignorar erros no logout - limpar estado local mesmo assim
           });
         }
@@ -98,12 +97,8 @@ export const useAuthStore = create<AuthState & AuthActions>()(
         }
         
         try {
-          const response = await fetch('/api/auth/refresh', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ refreshToken }),
+          const response = await apiRequest('POST', '/auth/refresh', {
+            refreshToken,
           });
           
           if (!response.ok) {
@@ -119,7 +114,6 @@ export const useAuthStore = create<AuthState & AuthActions>()(
           
           return true;
         } catch (error) {
-          // Token de refresh inválido, fazer logout
           get().logout();
           return false;
         }
@@ -127,9 +121,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
 
       initializeAuth: () => {
         const { refreshToken } = get();
-        
         if (refreshToken) {
-          // Tentar renovar o token de acesso
           get().refreshAuth();
         }
       },

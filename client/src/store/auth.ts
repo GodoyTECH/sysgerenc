@@ -1,3 +1,4 @@
+
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { apiRequest } from '@/services/api';
@@ -20,7 +21,7 @@ interface AuthState {
 }
 
 interface AuthActions {
-  login: (username: string, password: string) => Promise<boolean>;
+  login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
   refreshAuth: () => Promise<boolean>;
   initializeAuth: () => void;
@@ -39,12 +40,13 @@ export const useAuthStore = create<AuthState & AuthActions>()(
       error: null,
 
       // Ações
-      login: async (username: string, password: string) => {
+      login: async (email: string, password: string) => {
         set({ isLoading: true, error: null });
         
         try {
+          // 🔹 corrigido: sem /api no caminho
           const response = await apiRequest('POST', '/auth/login', {
-            username,
+            email,
             password,
           });
           
@@ -76,6 +78,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
       logout: () => {
         const { accessToken } = get();
         if (accessToken) {
+          // 🔹 corrigido: sem /api no caminho
           apiRequest('POST', '/auth/logout').catch(() => {
             // Ignorar erros no logout - limpar estado local mesmo assim
           });
@@ -97,8 +100,13 @@ export const useAuthStore = create<AuthState & AuthActions>()(
         }
         
         try {
-          const response = await apiRequest('POST', '/auth/refresh', {
-            refreshToken,
+          // 🔹 corrigido: sem /api no caminho
+          const response = await fetch('/.netlify/functions/api/auth/refresh', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ refreshToken }),
           });
           
           if (!response.ok) {
@@ -113,7 +121,7 @@ export const useAuthStore = create<AuthState & AuthActions>()(
           });
           
           return true;
-        } catch (error) {
+        } catch {
           get().logout();
           return false;
         }

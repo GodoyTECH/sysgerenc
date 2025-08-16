@@ -1,7 +1,9 @@
 # 📦 Netlify config para app Vite + Functions (Express)
 [build]
-  command = "npm run build"
+  base = ""
+  command = "npm run build --prefix client"
   publish = "client/dist"
+
 
 [functions]
   directory = "netlify/functions"

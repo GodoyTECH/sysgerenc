@@ -16,8 +16,4 @@
   to = "/.netlify/functions/api"
   status = 200
 
-# 🔁 SPA fallback
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
+

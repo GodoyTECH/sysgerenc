@@ -1,29 +1,21 @@
-import { db } from "./db";
+import { Pool, neonConfig } from "@neondatabase/serverless";
+import { drizzle } from "drizzle-orm/neon-serverless";
+import ws from "ws";
 import * as schema from "../shared/schema";
-import { eq, and, desc } from "drizzle-orm";
 
-// ================= USERS =================
-export async function getUserByUsername(username: string) {
-  const [user] = await db
-    .select()
-    .from(schema.users)
-    .where(eq(schema.users.username, username))
-    .limit(1);
-  return user || null;
+// 🔌 Configuração WebSocket para Neon
+neonConfig.webSocketConstructor = ws;
+
+if (!process.env.DATABASE_URL) {
+  throw new Error("DATABASE_URL must be set. Did you forget to configure?");
 }
 
-export async function getUser(id: string) {
-  const [user] = await db
-    .select()
-    .from(schema.users)
-    .where(eq(schema.users.id, id))
-    .limit(1);
-  return user || null;
-}
+// 🔌 Banco de dados (Neon Postgres via Drizzle)
+export const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+});
 
-export async function getUsersByCompany(companyId: string) {
-  return db.select().from(schema.users).where(eq(schema.users.companyId, companyId));
-}
+export const db = drizzle({ client: pool, schema });
 
 export async function createUser(userData: typeof schema.insertUserSchema._type) {
   const [user] = await db.insert(schema.users).values(userData).returning();

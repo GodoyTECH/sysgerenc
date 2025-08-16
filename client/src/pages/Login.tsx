@@ -52,12 +52,15 @@ export default function Login() {
     setLoginError('');
 
     try {
+      // 🔑 Garante que sempre haverá um companyId (usa "1" se vazio)
+      const companyId = data.companyId && data.companyId.trim() !== "" ? data.companyId : "1";
+
       console.log('🔐 Tentando fazer login...', { 
         username: data.username, 
-        companyId: data.companyId || 'auto' 
+        companyId 
       });
 
-      const success = await login(data.username, data.password, data.companyId);
+      const success = await login(data.username, data.password, companyId);
 
       if (success) {
         toast({
@@ -120,7 +123,7 @@ export default function Login() {
                 <Input
                   id="companyId"
                   type="text"
-                  placeholder="e.g., 123e4567-e89b-12d3-a456-426614174000"
+                  placeholder="Deixe em branco para usar a empresa padrão"
                   {...register('companyId')}
                   className={errors.companyId ? 'border-destructive' : ''}
                 />
@@ -128,7 +131,7 @@ export default function Login() {
                   <p className="text-sm text-destructive">{errors.companyId.message}</p>
                 )}
                 <p className="text-xs text-muted-foreground">
-                  Deixe em branco para login automático
+                  Se não souber, deixe vazio (usa empresa padrão).
                 </p>
               </div>
 

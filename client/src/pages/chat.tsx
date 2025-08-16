@@ -33,19 +33,19 @@ import {
   useOnlineUsers 
 } from '@/store/useChatStore';
 import { useUser } from '@/store/useAuthStore';
-import { joinChannel, leaveChannel, isSocketConnected } from '@/services/socket';
+import { useWebSocket } from '@/services/socket';
 import ChatMessage from '@/components/common/ChatMessage';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 
 export default function Chat() {
   const { toast } = useToast();
   const { user } = useUser();
+  const { connect, disconnect, isConnected } = useWebSocket();
   
   const {
     channels,
     activeChannel,
     isLoading,
-    isConnected,
     fetchChannels,
     setActiveChannel,
   } = useChatStore();
@@ -90,11 +90,11 @@ export default function Chat() {
     
     // Sair do canal atual
     if (activeChannel) {
-      leaveChannel(activeChannel);
+      disconnect();
     }
     
     // Entrar no novo canal
-    joinChannel(channelId);
+    connect();
     setActiveChannel(channelId);
     
     console.log(`💬 Mudou para canal #${channelId}`);
@@ -371,3 +371,4 @@ export default function Chat() {
     </div>
   );
 }
+

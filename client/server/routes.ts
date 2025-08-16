@@ -1,12 +1,5 @@
 // client/netlify/functions/routes/routes.ts
 
-/**
- * GodoySys – Rotas da API
- *
- * ✔️ Este arquivo define todas as rotas da API.
- * ✔️ No Netlify Functions usamos `attachRoutes(app)`.
- */
-
 import type { Express } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
@@ -25,22 +18,20 @@ import {
 const JWT_SECRET = process.env.JWT_SECRET || "supersecret";
 const ADMIN_MASTER_PIN = process.env.ADMIN_MASTER_PIN || "1234";
 
-/**
- * Registra todas as rotas na instância do Express.
- * No Netlify Functions usamos apenas esse attachRoutes.
- */
 export function attachRoutes(app: Express) {
   // ===================== AUTENTICAÇÃO =====================
   app.post("/api/auth/login", async (req, res) => {
     try {
-      const { username, password } = z
+      const { email, password } = z
         .object({
-          username: z.string(),
+          email: z.string().email(),
           password: z.string(),
         })
         .parse(req.body);
 
-      const user = await storage.getUserByUsername(username);
+      // busca por e-mail em vez de username
+      const user = await storage.getUserByEmail(email);
+
       if (!user || !(await bcrypt.compare(password, user.password))) {
         return res.status(401).json({ message: "Credenciais inválidas" });
       }

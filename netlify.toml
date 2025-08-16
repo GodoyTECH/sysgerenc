@@ -7,11 +7,12 @@
 [functions]
   node_bundler = "esbuild"
 
-# Encaminha /api/* para a Function, preservando o restante do caminho
+# Encaminha /api/* para a Function
 [[redirects]]
   from = "/api/*"
-  to = "/.netlify/functions/api/:splat"
+  to = "/.netlify/functions/api"
   status = 200
+  force = true
 
 # SPA fallback
 [[redirects]]

@@ -20,7 +20,7 @@ const ADMIN_MASTER_PIN = process.env.ADMIN_MASTER_PIN || "1234";
 
 export function attachRoutes(app: Express) {
   // ===================== AUTENTICAÇÃO =====================
-  app.post("/api/auth/login", async (req, res) => {
+  app.post("/auth/login", async (req, res) => {
     try {
       const { email, password } = z
         .object({
@@ -29,7 +29,6 @@ export function attachRoutes(app: Express) {
         })
         .parse(req.body);
 
-      // busca por e-mail em vez de username
       const user = await storage.getUserByEmail(email);
 
       if (!user || !(await bcrypt.compare(password, user.password))) {
@@ -68,7 +67,7 @@ export function attachRoutes(app: Express) {
     }
   });
 
-  app.post("/api/auth/refresh", async (req, res) => {
+  app.post("/auth/refresh", async (req, res) => {
     try {
       const { refreshToken } = req.body;
       if (!refreshToken) {
@@ -94,7 +93,7 @@ export function attachRoutes(app: Express) {
     }
   });
 
-  app.post("/api/auth/logout", authenticateToken, async (req, res) => {
+  app.post("/auth/logout", authenticateToken, async (req, res) => {
     try {
       await storage.updateUserRefreshToken(req.user.userId, null);
       res.json({ message: "Logout realizado com sucesso" });
@@ -105,7 +104,7 @@ export function attachRoutes(app: Express) {
 
   // ===================== USUÁRIOS =====================
   app.get(
-    "/api/users",
+    "/users",
     authenticateToken,
     requireRole(["admin", "manager"]),
     async (req, res) => {
@@ -119,7 +118,7 @@ export function attachRoutes(app: Express) {
   );
 
   app.post(
-    "/api/users",
+    "/users",
     authenticateToken,
     requireRole(["admin"]),
     async (req, res) => {
@@ -137,7 +136,7 @@ export function attachRoutes(app: Express) {
   );
 
   // ===================== EMPRESA =====================
-  app.get("/api/companies/current", authenticateToken, async (req, res) => {
+  app.get("/companies/current", authenticateToken, async (req, res) => {
     try {
       const company = await storage.getCompany(req.user.companyId);
       if (!company) return res.status(404).json({ message: "Empresa não encontrada" });
@@ -148,7 +147,7 @@ export function attachRoutes(app: Express) {
   });
 
   // ===================== PRODUTOS =====================
-  app.get("/api/products", authenticateToken, async (req, res) => {
+  app.get("/products", authenticateToken, async (req, res) => {
     try {
       const products = await storage.getProductsByCompany(req.user.companyId);
       res.json(products);
@@ -158,7 +157,7 @@ export function attachRoutes(app: Express) {
   });
 
   app.post(
-    "/api/products",
+    "/products",
     authenticateToken,
     requireRole(["admin", "manager"]),
     async (req, res) => {
@@ -174,7 +173,7 @@ export function attachRoutes(app: Express) {
   );
 
   // ===================== PEDIDOS =====================
-  app.get("/api/orders", authenticateToken, async (req, res) => {
+  app.get("/orders", authenticateToken, async (req, res) => {
     try {
       const { status, date, limit = 50 } = req.query;
       const orders = await storage.getOrdersByCompany({
@@ -189,7 +188,7 @@ export function attachRoutes(app: Express) {
     }
   });
 
-  app.post("/api/orders", authenticateToken, async (req, res) => {
+  app.post("/orders", authenticateToken, async (req, res) => {
     try {
       const orderData = insertOrderSchema.parse(req.body);
       orderData.companyId = req.user.companyId;
@@ -202,7 +201,7 @@ export function attachRoutes(app: Express) {
   });
 
   // ===================== CHAT =====================
-  app.get("/api/chat/:channel", authenticateToken, async (req, res) => {
+  app.get("/chat/:channel", authenticateToken, async (req, res) => {
     try {
       const { channel } = req.params;
       const { limit = 50 } = req.query;
@@ -217,7 +216,7 @@ export function attachRoutes(app: Express) {
     }
   });
 
-  app.post("/api/chat/:channel", authenticateToken, async (req, res) => {
+  app.post("/chat/:channel", authenticateToken, async (req, res) => {
     try {
       const { channel } = req.params;
       const { message } = req.body;
@@ -234,7 +233,7 @@ export function attachRoutes(app: Express) {
   });
 
   // ===================== RELATÓRIOS =====================
-  app.get("/api/reports/dashboard", authenticateToken, async (req, res) => {
+  app.get("/reports/dashboard", authenticateToken, async (req, res) => {
     try {
       const metrics = await storage.getDashboardMetrics(req.user.companyId);
       res.json(metrics);
@@ -244,7 +243,7 @@ export function attachRoutes(app: Express) {
   });
 
   app.post(
-    "/api/reports/download",
+    "/reports/download",
     authenticateToken,
     requireRole(["admin", "manager"]),
     async (req, res) => {
@@ -266,7 +265,7 @@ export function attachRoutes(app: Express) {
 
   // ===================== CONFIG =====================
   app.patch(
-    "/api/config/company",
+    "/config/company",
     authenticateToken,
     requireRole(["admin"]),
     async (req, res) => {
@@ -283,3 +282,4 @@ export function attachRoutes(app: Express) {
     }
   );
 }
+

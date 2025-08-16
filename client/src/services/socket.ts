@@ -20,7 +20,6 @@ class WebSocketService {
     }
 
     try {
-      // Determinar protocolo baseado no protocolo HTTP atual
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       const wsUrl = `${protocol}//${window.location.host}/ws`;
       
@@ -36,8 +35,7 @@ class WebSocketService {
           type: 'SUBSCRIBE_COMPANY',
           data: { companyId: user.companyId },
         });
-        
-        // Iniciar heartbeat
+
         this.startHeartbeat();
       };
       
@@ -55,14 +53,10 @@ class WebSocketService {
         this.isConnected = false;
         this.stopHeartbeat();
         
-        // Tentar reconectar se não foi fechamento intencional
         if (this.reconnectAttempts < this.maxReconnectAttempts) {
           this.reconnectAttempts++;
           console.log(`Tentando reconectar... (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
-          
-          setTimeout(() => {
-            this.connect();
-          }, this.reconnectInterval);
+          setTimeout(() => this.connect(), this.reconnectInterval);
         } else {
           console.error('Máximo de tentativas de reconexão atingido');
         }
@@ -80,7 +74,6 @@ class WebSocketService {
   // Desconectar WebSocket
   disconnect() {
     this.stopHeartbeat();
-    
     if (this.ws) {
       this.ws.close();
       this.ws = null;
@@ -97,27 +90,31 @@ class WebSocketService {
     }
   }
 
+  // 🔹 Adicionados para compatibilidade com o chat.tsx
+  joinChannel(channel: string) {
+    this.send({ type: 'JOIN_CHANNEL', data: { channel } });
+  }
+
+  leaveChannel(channel: string) {
+    this.send({ type: 'LEAVE_CHANNEL', data: { channel } });
+  }
+
   // Processar mensagens recebidas
   private handleMessage(message: any) {
     switch (message.type) {
       case 'NEW_ORDER':
         console.log('📋 Novo pedido recebido:', message.data);
-        // Atualizar store de pedidos
         useOrdersStore.getState().fetchOrders();
-        
-        // Mostrar notificação (pode implementar um toast aqui)
         this.showNotification('Novo Pedido', `Pedido #${message.data.id} recebido`);
         break;
         
       case 'ORDER_STATUS_UPDATE':
         console.log('📝 Status do pedido atualizado:', message.data);
-        // Atualizar store de pedidos
         useOrdersStore.getState().fetchOrders();
         break;
         
       case 'CHAT_MESSAGE':
         console.log('💬 Nova mensagem do chat:', message.data);
-        // Adicionar mensagem ao store de chat
         useChatStore.getState().addMessageFromWebSocket(message.data);
         break;
         
@@ -127,7 +124,6 @@ class WebSocketService {
         break;
         
       case 'PONG':
-        // Resposta do heartbeat
         break;
         
       default:
@@ -135,13 +131,13 @@ class WebSocketService {
     }
   }
 
-  // Sistema de heartbeat para manter conexão viva
+  // Heartbeat
   private startHeartbeat() {
     this.heartbeatInterval = setInterval(() => {
       if (this.isConnected) {
         this.send({ type: 'PING' });
       }
-    }, 30000); // 30 segundos
+    }, 30000);
   }
 
   private stopHeartbeat() {
@@ -151,7 +147,7 @@ class WebSocketService {
     }
   }
 
-  // Mostrar notificação do sistema (se suportado pelo navegador)
+  // Notificação do sistema
   private showNotification(title: string, body: string) {
     if ('Notification' in window && Notification.permission === 'granted') {
       new Notification(title, {
@@ -162,26 +158,27 @@ class WebSocketService {
     }
   }
 
-  // Verificar se está conectado
   isSocketConnected(): boolean {
     return this.isConnected;
   }
 }
 
-// Instância singleton do WebSocket
+// Instância singleton
 export const wsService = new WebSocketService();
 
-// Hook para usar o WebSocket em componentes React
+// Hook React
 export function useWebSocket() {
   return {
     connect: () => wsService.connect(),
     disconnect: () => wsService.disconnect(),
     send: (message: any) => wsService.send(message),
+    joinChannel: (channel: string) => wsService.joinChannel(channel),
+    leaveChannel: (channel: string) => wsService.leaveChannel(channel),
     isConnected: () => wsService.isSocketConnected(),
   };
 }
 
-// Inicializar WebSocket quando o usuário fizer login
+// Auto conectar/desconectar no login/logout
 useAuthStore.subscribe((state) => {
   if (state.user && !wsService.isSocketConnected()) {
     wsService.connect();
@@ -190,7 +187,7 @@ useAuthStore.subscribe((state) => {
   }
 });
 
-// Solicitar permissão para notificações quando o módulo for carregado
+// Solicitar permissão para notificações
 if ('Notification' in window && Notification.permission === 'default') {
   Notification.requestPermission();
 }

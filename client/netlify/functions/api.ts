@@ -2,7 +2,7 @@
 
 import express from "express";
 import serverless from "serverless-http";
-import { attachRoutes } from "../server/routes"; // sobe 2 níveis até client/, depois entra em server/
+import { attachRoutes } from "../../server/routes"; // sobe 2 níveis até client/, depois entra em server/
 
 const app = express();
 

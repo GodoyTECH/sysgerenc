@@ -1,17 +1,47 @@
-import { Pool, neonConfig } from '@neondatabase/serverless';
-import { drizzle } from 'drizzle-orm/neon-serverless';
-import ws from "ws";
+import { db } from "./db";
 import * as schema from "../shared/schema";
+import { eq, and, desc } from "drizzle-orm";
 
-neonConfig.webSocketConstructor = ws;
-
-if (!process.env.DATABASE_URL) {
-  throw new Error(
-    "DATABASE_URL must be set. Did you forget to provision a database?",
-  );
+// ================= USERS =================
+export async function getUserByUsername(username: string) {
+  const [user] = await db
+    .select()
+    .from(schema.users)
+    .where(eq(schema.users.username, username))
+    .limit(1);
+  return user || null;
 }
 
-// 🔌 Banco de dados (Neon Postgres)
-// ➤ Defina DATABASE_URL no Netlify (ex.: postgres://user:pass@host/db?sslmode=require)
-export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-export const db = drizzle({ client: pool, schema });
+export async function getUser(id: string) {
+  const [user] = await db
+    .select()
+    .from(schema.users)
+    .where(eq(schema.users.id, id))
+    .limit(1);
+  return user || null;
+}
+
+export async function getUsersByCompany(companyId: string) {
+  return db.select().from(schema.users).where(eq(schema.users.companyId, companyId));
+}
+
+export async function createUser(userData: typeof schema.insertUserSchema._type) {
+  const [user] = await db.insert(schema.users).values(userData).returning();
+  return user;
+}
+
+export async function updateUserRefreshToken(userId: string, refreshToken: string | null) {
+  await db.update(schema.users)
+    .set({ refreshToken })
+    .where(eq(schema.users.id, userId));
+}
+
+export async function updateUserLastLogin(userId: string) {
+  await db.update(schema.users)
+    .set({ lastLogin: new Date() })
+    .where(eq(schema.users.id, userId));
+}
+
+// ================= COMPANIES =================
+export async function getCompany(companyId: string) {
+  const [company]

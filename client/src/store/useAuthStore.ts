@@ -67,7 +67,8 @@ export const useAuthStore = create<AuthState>()(
             companyId,
           });
 
-          const { user, tokens } = response.data;
+          const data = await response.json();
+          const { user, tokens } = data;
 
           set({
             isAuthenticated: true,
@@ -79,7 +80,8 @@ export const useAuthStore = create<AuthState>()(
           // Buscar empresa
           try {
             const companyResponse = await api.get('/company');
-            set({ company: companyResponse.data.company });
+            const companyData = await companyResponse.json();
+            set({ company: companyData.company });
           } catch (err) {
             console.warn('⚠️ Erro ao buscar empresa:', err);
           }
@@ -139,7 +141,10 @@ export const useAuthStore = create<AuthState>()(
             refreshToken: tokens.refreshToken,
           });
 
-          set({ tokens: response.data.tokens });
+          const data = await response.json();
+          if (!data?.tokens) throw new Error('Sem tokens no refresh');
+
+          set({ tokens: data.tokens });
           console.log('✅ Token renovado');
           return true;
         } catch (err) {
@@ -163,7 +168,8 @@ export const useAuthStore = create<AuthState>()(
         try {
           console.log('🔍 Verificando auth...');
           const response = await api.get('/auth/me');
-          const { user, company } = response.data;
+          const data = await response.json();
+          const { user, company } = data;
 
           set({
             isAuthenticated: true,

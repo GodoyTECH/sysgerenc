@@ -1,6 +1,7 @@
 import { useAuthStore } from '@/store/auth';
 
 // Configuração base da API
+
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || '/.netlify/functions/api';
 
@@ -10,7 +11,7 @@ export async function apiRequest(
   endpoint: string,
   data?: unknown
 ): Promise<Response> {
-  const { accessToken, refreshAuth, logout } = useAuthStore.getState();
+  const { accessToken, refreshToken, logout } = useAuthStore.getState(); // ❌ antes chamava refreshAuth, corrigi p/ refreshToken
 
   const url = `${API_BASE_URL}${endpoint}`;
   const headers: Record<string, string> = {
@@ -40,7 +41,7 @@ export async function apiRequest(
     if ((response.status === 401 || response.status === 403) && accessToken) {
       console.log('Token expirado, tentando renovar...');
 
-      const refreshSuccess = await refreshAuth();
+      const refreshSuccess = await refreshToken(); // ❌ antes: refreshAuth → corrigi
       if (refreshSuccess) {
         // Tentar a requisição novamente com o novo token
         const newToken = useAuthStore.getState().accessToken;
@@ -106,7 +107,7 @@ export async function uploadFile(
   file: File,
   additionalData?: Record<string, any>
 ): Promise<Response> {
-  const { accessToken, refreshAuth, logout } = useAuthStore.getState();
+  const { accessToken, refreshToken, logout } = useAuthStore.getState(); // ❌ corrigido: refreshAuth → refreshToken
 
   const url = `${API_BASE_URL}${endpoint}`;
   const formData = new FormData();
@@ -139,7 +140,7 @@ export async function uploadFile(
 
     // Tentar renovar token se recebeu 401/403
     if ((response.status === 401 || response.status === 403) && accessToken) {
-      const refreshSuccess = await refreshAuth();
+      const refreshSuccess = await refreshToken(); // ❌ corrigido
       if (refreshSuccess) {
         const newToken = useAuthStore.getState().accessToken;
         headers['Authorization'] = `Bearer ${newToken}`;

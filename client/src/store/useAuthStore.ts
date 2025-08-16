@@ -1,15 +1,14 @@
 /**
  * GodoySys - Store de Autenticação
- * 
- * Este store gerencia o estado de autenticação do usuário,
- * tokens JWT e informações da sessão usando Zustand.
+ *
+ * Gerencia autenticação, tokens JWT e informações de sessão com Zustand.
  */
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { api } from '@/services/api';
 
-// Tipos para o estado de autenticação
+// Tipos de usuário e empresa
 interface User {
   id: string;
   name: string;
@@ -33,14 +32,12 @@ interface AuthTokens {
 }
 
 interface AuthState {
-  // Estado
   isAuthenticated: boolean;
   isLoading: boolean;
   user: User | null;
   company: Company | null;
   tokens: AuthTokens | null;
-  
-  // Ações
+
   login: (username: string, password: string, companyId?: string) => Promise<boolean>;
   logout: () => void;
   refreshToken: () => Promise<boolean>;
@@ -48,13 +45,9 @@ interface AuthState {
   updateProfile: (userData: Partial<User>) => void;
 }
 
-/**
- * Store de autenticação usando Zustand com persistência
- */
 export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
-      // Estado inicial
       isAuthenticated: false,
       isLoading: true,
       user: null,
@@ -62,12 +55,12 @@ export const useAuthStore = create<AuthState>()(
       tokens: null,
 
       /**
-       * Realiza login do usuário
+       * Realiza login
        */
-      login: async (username: string, password: string, companyId?: string) => {
+      login: async (username, password, companyId) => {
         try {
-          console.log('🔐 Tentando fazer login...', { username, companyId });
-          
+          console.log('🔐 Login:', { username, companyId });
+
           const response = await api.post('/auth/login', {
             username,
             password,
@@ -76,7 +69,6 @@ export const useAuthStore = create<AuthState>()(
 
           const { user, tokens } = response.data;
 
-          // Atualizar estado
           set({
             isAuthenticated: true,
             isLoading: false,
@@ -84,19 +76,18 @@ export const useAuthStore = create<AuthState>()(
             tokens,
           });
 
-          // Buscar dados da empresa após login
+          // Buscar empresa
           try {
             const companyResponse = await api.get('/company');
             set({ company: companyResponse.data.company });
-          } catch (error) {
-            console.warn('⚠️ Erro ao buscar dados da empresa:', error);
+          } catch (err) {
+            console.warn('⚠️ Erro ao buscar empresa:', err);
           }
 
-          console.log('✅ Login realizado com sucesso');
+          console.log('✅ Login OK');
           return true;
-
-        } catch (error: any) {
-          console.error('❌ Erro no login:', error);
+        } catch (err) {
+          console.error('❌ Falha no login:', err);
           set({
             isAuthenticated: false,
             isLoading: false,
@@ -109,21 +100,21 @@ export const useAuthStore = create<AuthState>()(
       },
 
       /**
-       * Realiza logout do usuário
+       * Logout
        */
-      logout: async () => {
+      logout: () => {
         const { tokens } = get();
-        
-        try {
-          // Tentar notificar o servidor sobre o logout
-          if (tokens?.accessToken) {
-            await api.post('/auth/logout');
-          }
-        } catch (error) {
-          console.warn('⚠️ Erro ao notificar logout no servidor:', error);
-        }
 
-        // Limpar estado local
+        (async () => {
+          try {
+            if (tokens?.accessToken) {
+              await api.post('/auth/logout');
+            }
+          } catch (err) {
+            console.warn('⚠️ Erro ao notificar logout:', err);
+          }
+        })();
+
         set({
           isAuthenticated: false,
           isLoading: false,
@@ -132,59 +123,45 @@ export const useAuthStore = create<AuthState>()(
           tokens: null,
         });
 
-        console.log('👋 Logout realizado');
+        console.log('👋 Logout OK');
       },
 
       /**
-       * Renova o token de acesso
+       * Renova token
        */
       refreshToken: async () => {
         const { tokens } = get();
-        
-        if (!tokens?.refreshToken) {
-          return false;
-        }
+        if (!tokens?.refreshToken) return false;
 
         try {
           console.log('🔄 Renovando token...');
-          
           const response = await api.post('/auth/refresh', {
             refreshToken: tokens.refreshToken,
           });
 
-          const { tokens: newTokens } = response.data;
-
-          set({
-            tokens: newTokens,
-          });
-
-          console.log('✅ Token renovado com sucesso');
+          set({ tokens: response.data.tokens });
+          console.log('✅ Token renovado');
           return true;
-
-        } catch (error) {
-          console.error('❌ Erro ao renovar token:', error);
-          
-          // Se falhou ao renovar, fazer logout
+        } catch (err) {
+          console.error('❌ Refresh falhou:', err);
           get().logout();
           return false;
         }
       },
 
       /**
-       * Verifica se o usuário está autenticado
+       * Verifica autenticação
        */
       checkAuth: async () => {
         const { tokens } = get();
-        
+
         if (!tokens?.accessToken) {
           set({ isLoading: false, isAuthenticated: false });
           return;
         }
 
         try {
-          console.log('🔍 Verificando autenticação...');
-          
-          // Tentar buscar perfil do usuário
+          console.log('🔍 Verificando auth...');
           const response = await api.get('/auth/me');
           const { user, company } = response.data;
 
@@ -195,14 +172,11 @@ export const useAuthStore = create<AuthState>()(
             company,
           });
 
-          console.log('✅ Usuário autenticado:', user.name);
-
-        } catch (error: any) {
-          console.log('❌ Token inválido, tentando renovar...');
-          
-          // Tentar renovar token se falhou
+          console.log(`✅ Autenticado: ${user?.name || 'Usuário'}`);
+        } catch (err) {
+          console.warn('❌ Token inválido, tentando refresh...');
           const renewed = await get().refreshToken();
-          
+
           if (!renewed) {
             set({
               isAuthenticated: false,
@@ -211,27 +185,25 @@ export const useAuthStore = create<AuthState>()(
               company: null,
               tokens: null,
             });
+          } else {
+            set({ isLoading: false });
           }
         }
       },
 
       /**
-       * Atualiza dados do perfil do usuário
+       * Atualiza perfil
        */
-      updateProfile: (userData: Partial<User>) => {
+      updateProfile: (userData) => {
         const { user } = get();
-        
         if (user) {
-          set({
-            user: { ...user, ...userData },
-          });
+          set({ user: { ...user, ...userData } });
         }
       },
     }),
     {
-      name: 'godoy-auth', // Nome da chave no localStorage
+      name: 'godoy-auth',
       partialize: (state) => ({
-        // Persistir apenas tokens e dados básicos
         tokens: state.tokens,
         user: state.user,
         company: state.company,
@@ -242,7 +214,7 @@ export const useAuthStore = create<AuthState>()(
 );
 
 /**
- * Hook para verificar permissões do usuário
+ * Hook de permissões
  */
 export function usePermissions() {
   const { user } = useAuthStore();
@@ -252,17 +224,17 @@ export function usePermissions() {
     isManager: user?.role === 'manager' || user?.role === 'admin',
     isAttendant: user?.role === 'attendant',
     isKitchen: user?.role === 'kitchen',
-    hasRole: (roles: string[]) => user ? roles.includes(user.role) : false,
-    canManageUsers: user?.role === 'admin' || user?.role === 'manager',
-    canManageProducts: user?.role === 'admin' || user?.role === 'manager',
-    canViewReports: user?.role === 'admin' || user?.role === 'manager',
-    canManageOrders: true, // Todos podem gerenciar pedidos
-    canAccessKitchen: user?.role === 'admin' || user?.role === 'manager' || user?.role === 'kitchen',
+    hasRole: (roles: string[]) => (user ? roles.includes(user.role) : false),
+    canManageUsers: ['admin', 'manager'].includes(user?.role || ''),
+    canManageProducts: ['admin', 'manager'].includes(user?.role || ''),
+    canViewReports: ['admin', 'manager'].includes(user?.role || ''),
+    canManageOrders: true,
+    canAccessKitchen: ['admin', 'manager', 'kitchen'].includes(user?.role || ''),
   };
 }
 
 /**
- * Hook para obter informações do usuário autenticado
+ * Hook do usuário autenticado
  */
 export function useUser() {
   const { user, company, isAuthenticated, isLoading } = useAuthStore();
@@ -273,10 +245,11 @@ export function useUser() {
     isAuthenticated,
     isLoading,
     isAdmin: user?.role === 'admin',
-    userInitials: user?.name
-      .split(' ')
-      .map(n => n[0])
-      .join('')
-      .toUpperCase() || 'U',
+    userInitials:
+      user?.name
+        ?.split(' ')
+        .map((n) => n[0])
+        .join('')
+        .toUpperCase() || 'U',
   };
 }

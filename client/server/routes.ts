@@ -1,4 +1,9 @@
-// client/netlify/functions/routes/routes.ts
+// client/server/routes.ts
+/**
+ * Rotas HTTP do GodoySys (Serverless / Netlify)
+ * Login por e-mail + senha. Sem prefixo /api aqui, pois o prefixo
+ * efetivo vira "/.netlify/functions/api" pelo Netlify Function.
+ */
 
 import type { Express } from "express";
 import bcrypt from "bcryptjs";
@@ -9,8 +14,9 @@ import { authenticateToken, requireRole } from "./middleware/auth";
 import { sendReportsEmail } from "./services/email";
 import { generateReportsCSV } from "./services/reports";
 import {
+  // adicionamos o loginSchema para validar { email, password }
+  loginSchema,
   insertUserSchema,
-  insertCompanySchema,
   insertProductSchema,
   insertOrderSchema,
 } from "../shared/schema";
@@ -20,15 +26,18 @@ const ADMIN_MASTER_PIN = process.env.ADMIN_MASTER_PIN || "1234";
 
 export function attachRoutes(app: Express) {
   // ===================== AUTENTICAÇÃO =====================
+
+  /**
+   * POST /auth/login
+   * Espera { email, password }
+   * Retorna { accessToken, refreshToken, user }
+   */
   app.post("/auth/login", async (req, res) => {
     try {
-      const { email, password } = z
-        .object({
-          email: z.string().email(),
-          password: z.string(),
-        })
-        .parse(req.body);
+      // valida o corpo usando loginSchema (email+password)
+      const { email, password } = loginSchema.parse(req.body);
 
+      // busca usuário por e-mail
       const user = await storage.getUserByEmail(email);
 
       if (!user || !(await bcrypt.compare(password, user.password))) {
@@ -38,6 +47,7 @@ export function attachRoutes(app: Express) {
         return res.status(401).json({ message: "Usuário desativado" });
       }
 
+      // gera tokens
       const accessToken = jwt.sign(
         { userId: user.id, companyId: user.companyId, role: user.role },
         JWT_SECRET,
@@ -47,9 +57,11 @@ export function attachRoutes(app: Express) {
         expiresIn: "7d",
       });
 
+      // persiste refreshToken (seu storage já possui esse método)
       await storage.updateUserRefreshToken(user.id, refreshToken);
       await storage.updateUserLastLogin(user.id);
 
+      // resposta padronizada que o client espera
       res.json({
         accessToken,
         refreshToken,
@@ -62,21 +74,34 @@ export function attachRoutes(app: Express) {
         },
       });
     } catch (error) {
+      // se for erro de validação, retornar detalhes para facilitar debug
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({
+          message: "Dados inválidos",
+          details: error.errors,
+        });
+      }
       console.error("Erro no login:", error);
       res.status(400).json({ message: "Dados inválidos" });
     }
   });
 
+  /**
+   * POST /auth/refresh
+   * Espera { refreshToken }
+   * Retorna { accessToken }
+   */
   app.post("/auth/refresh", async (req, res) => {
     try {
-      const { refreshToken } = req.body;
-      if (!refreshToken) {
-        return res.status(401).json({ message: "Token de refresh necessário" });
-      }
+      const { refreshToken } = z
+        .object({ refreshToken: z.string().min(1) })
+        .parse(req.body);
 
       const decoded = jwt.verify(refreshToken, JWT_SECRET) as { userId: string };
+
       const user = await storage.getUser(decoded.userId);
 
+      // valida refreshToken atual contra o armazenado
       if (!user || user.refreshToken !== refreshToken) {
         return res.status(403).json({ message: "Token inválido" });
       }
@@ -88,11 +113,18 @@ export function attachRoutes(app: Express) {
       );
 
       res.json({ accessToken: newAccessToken });
-    } catch {
-      res.status(403).json({ message: "Token inválido" });
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: "Dados inválidos", details: err.errors });
+      }
+      return res.status(403).json({ message: "Token inválido" });
     }
   });
 
+  /**
+   * POST /auth/logout
+   * Invalida refreshToken salvo no storage (requer bearer)
+   */
   app.post("/auth/logout", authenticateToken, async (req, res) => {
     try {
       await storage.updateUserRefreshToken(req.user.userId, null);
@@ -282,4 +314,3 @@ export function attachRoutes(app: Express) {
     }
   );
 }
-

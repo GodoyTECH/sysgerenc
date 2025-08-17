@@ -1,23 +1,27 @@
 import { sql } from "drizzle-orm";
 import { pgTable, text, varchar, timestamp, decimal, integer, boolean, jsonb, uuid } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
-import { createInsertSchema, createSelectSchema } from "drizzle-zod";
+import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// Tabela de empresas (multi-tenant)
+/* ==============================
+   TABELAS PRINCIPAIS
+============================== */
+
+// Empresas
 export const companies = pgTable("companies", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
   email: text("email").notNull(),
   phone: text("phone"),
   address: text("address"),
-  settings: jsonb("settings").default('{}'),
+  settings: jsonb("settings").default(sql`'{}'::jsonb`),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Tabela de usuários
+// Usuários
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: uuid("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
@@ -33,7 +37,7 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Tabela de categorias de produtos
+// Categorias
 export const categories = pgTable("categories", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: uuid("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
@@ -43,7 +47,7 @@ export const categories = pgTable("categories", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Tabela de produtos
+// Produtos
 export const products = pgTable("products", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: uuid("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
@@ -54,13 +58,13 @@ export const products = pgTable("products", {
   cost: decimal("cost", { precision: 10, scale: 2 }),
   stock: integer("stock").default(0),
   minStock: integer("min_stock").default(0),
-  attributes: jsonb("attributes").default('{}'), // Atributos dinâmicos por categoria
+  attributes: jsonb("attributes").default(sql`'{}'::jsonb`),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Tabela de pedidos
+// Pedidos
 export const orders = pgTable("orders", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: uuid("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
@@ -69,24 +73,20 @@ export const orders = pgTable("orders", {
   customerPhone: text("customer_phone"),
   customerEmail: text("customer_email"),
   table: text("table"),
-  status: text("status", { 
-    enum: ["pending", "preparing", "ready", "delivered", "cancelled"] 
-  }).default("pending"),
-  paymentStatus: text("payment_status", { 
-    enum: ["pending", "paid", "cancelled"] 
-  }).default("pending"),
+  status: text("status", { enum: ["pending", "preparing", "ready", "delivered", "cancelled"] }).default("pending"),
+  paymentStatus: text("payment_status", { enum: ["pending", "paid", "cancelled"] }).default("pending"),
   paymentMethod: text("payment_method"),
   subtotal: decimal("subtotal", { precision: 10, scale: 2 }).notNull(),
-  discount: decimal("discount", { precision: 10, scale: 2 }).default('0'),
-  tax: decimal("tax", { precision: 10, scale: 2 }).default('0'),
+  discount: decimal("discount", { precision: 10, scale: 2 }).default("0"),
+  tax: decimal("tax", { precision: 10, scale: 2 }).default("0"),
   total: decimal("total", { precision: 10, scale: 2 }).notNull(),
   notes: text("notes"),
-  estimatedTime: integer("estimated_time"), // em minutos
+  estimatedTime: integer("estimated_time"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Tabela de itens do pedido
+// Itens do pedido
 export const orderItems = pgTable("order_items", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   orderId: uuid("order_id").notNull().references(() => orders.id, { onDelete: "cascade" }),
@@ -98,7 +98,7 @@ export const orderItems = pgTable("order_items", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Tabela de mensagens do chat
+// Chat
 export const chatMessages = pgTable("chat_messages", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: uuid("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
@@ -109,7 +109,7 @@ export const chatMessages = pgTable("chat_messages", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Tabela de logs de auditoria
+// Logs
 export const auditLogs = pgTable("audit_logs", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: uuid("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
@@ -117,13 +117,16 @@ export const auditLogs = pgTable("audit_logs", {
   action: text("action").notNull(),
   resource: text("resource").notNull(),
   resourceId: text("resource_id"),
-  details: jsonb("details").default('{}'),
+  details: jsonb("details").default(sql`'{}'::jsonb`),
   ipAddress: text("ip_address"),
   userAgent: text("user_agent"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Relações
+/* ==============================
+   RELAÇÕES
+============================== */
+
 export const companiesRelations = relations(companies, ({ many }) => ({
   users: many(users),
   categories: many(categories),
@@ -208,7 +211,10 @@ export const auditLogsRelations = relations(auditLogs, ({ one }) => ({
   }),
 }));
 
-// Schemas de validação Zod
+/* ==============================
+   VALIDADORES ZOD
+============================== */
+
 export const insertCompanySchema = createInsertSchema(companies).omit({
   id: true,
   createdAt: true,
@@ -255,7 +261,10 @@ export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({
   createdAt: true,
 });
 
-// Tipos TypeScript
+/* ==============================
+   TIPAGENS
+============================== */
+
 export type Company = typeof companies.$inferSelect;
 export type InsertCompany = z.infer<typeof insertCompanySchema>;
 
@@ -279,3 +288,4 @@ export type InsertChatMessage = z.infer<typeof insertChatMessageSchema>;
 
 export type AuditLog = typeof auditLogs.$inferSelect;
 export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
+

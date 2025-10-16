@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Verificador de Infrações - ONESTATE</title>
     <style>
         /* Reset e configurações básicas */
@@ -23,6 +23,7 @@
             --text-muted: #aaa;
             --border-radius: 8px;
             --transition: all 0.3s ease;
+            --police-accent: #2b9cff; /* ligeiro destaque para o card da polícia */
         }
 
         /* Estilos gerais */
@@ -189,20 +190,58 @@
             color: var(--text-muted);
         }
 
+        /* Card destacado da Polícia */
+        .police-card {
+            margin-top: 30px;
+            padding: 18px;
+            background: linear-gradient(180deg, rgba(43,156,255,0.06), rgba(43,156,255,0.02));
+            border: 1px solid rgba(43,156,255,0.12);
+            border-left: 6px solid var(--police-accent);
+            border-radius: var(--border-radius);
+            box-shadow: 0 6px 18px rgba(43,156,255,0.03);
+        }
+
+        .police-card h2 {
+            color: var(--text-light);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .police-card .rules-text {
+            color: var(--text-light);
+            margin-bottom: 12px;
+            line-height: 1.45;
+        }
+
+        .police-card .small-muted {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        /* Separador para a área policial de verificação */
+        .police-search {
+            margin-top: 18px;
+            padding: 14px;
+            background: var(--card-dark);
+            border-radius: var(--border-radius);
+        }
+
         /* Responsividade */
         @media (max-width: 600px) {
             body {
                 padding: 15px;
             }
-            
+
             h1 {
                 font-size: 1.8rem;
             }
-            
+
             .regra {
                 padding: 12px;
             }
-            
+
             .estatisticas {
                 flex-direction: column;
                 gap: 15px;
@@ -218,6 +257,7 @@
         </header>
         
         <main>
+            <!-- === SEÇÃO ORIGINAL (mantida 100% igual) === -->
             <section class="input-section">
                 <label for="entrada">Descreva a infração para verificação:</label>
                 <textarea 
@@ -251,13 +291,92 @@
             </div>
             
             <section class="resultado" id="resultado">
-                <!-- Resultados aparecerão aqui -->
+                <!-- Resultados aparecerão aqui (original) -->
             </section>
+
+            <!-- === NOVO: CARD DESTACADO DA POLÍCIA (sem alterar o restante) === -->
+            <section class="police-card" id="policeCard">
+                <h2>🚔 Regras da Polícia - OneState</h2>
+                <div class="rules-text">
+                    <!-- Aqui vai exatamente o texto que você enviou, formatado -->
+                    <p class="small-muted">Abaixo listamos uma série de regras que devem ser seguidas por TODOS que forem membros da Polícia em OneState.</p>
+                    <ol style="margin-top:10px; padding-left:18px;">
+                        <li>É proibido levantar falsas acusações contra civis. Qualquer policial que algemar, atirar, soltar taser ou aprisionar qualquer cidadão sem uma acusação sólida será removido da corporação.</li>
+                        <li>É proibido deter ou aprisionar qualquer cidadão sem causa para isso. O policial que o fizer será removido da corporação.</li>
+                        <li>A atitude desrespeitosa com colegas e civis não é aceitável. Não seja rude, não insulte e não seja, de maneira nenhuma, intolerante.
+                            <div style="margin-top:6px;"><em>Penalidade:</em> 1º repreensão</div>
+                        </li>
+                        <li>O uso de armamentos, força física e/ou equipamento especial sem aviso prévio ou uma razão justificável dentro do roleplay é proibido.
+                            <div style="margin-top:6px;"><strong>Razões justificáveis são:</strong>
+                                <ul style="margin-top:6px; padding-left:18px;">
+                                    <li>Detenção de um criminoso procurado por crimes identificados pelo sistema</li>
+                                    <li>Resistência à prisão</li>
+                                    <li>Colocar em risco a integridade física ou a vida de um policial ou de um civil</li>
+                                    <li>Perseguição policial</li>
+                                </ul>
+                                <div style="margin-top:6px;"><em>Penalidade:</em> 1º repreensão e em casos mais graves remoção da corporação.</div>
+                            </div>
+                        </li>
+                        <li>Não obediência às regras impostas pela liderança. <em>Punição:</em> 1 repreensão.</li>
+                        <li>É proibido violar as regras do servidor. <em>Punição:</em> 1 repreensão E punição referente à violação.</li>
+                        <li>Usar os veículos da corporação para benefício pessoal é proibido. <em>Punição:</em> 1 repreensão.</li>
+                        <li>Insultos à liderança da corporação são punidos com 1 repreensão.</li>
+                        <li><strong>Passos OBRIGATÓRIOS ao prender alguém</strong>
+                            <ul style="margin-top:6px; padding-left:18px;">
+                                <li>Ao prender alguém, o policial deve explicar de forma clara a razão da apreensão.</li>
+                                <li>Ao abordar alguém, o policial DEVE primeiramente ordenar que o cidadão pare o que está fazendo. (andando, dirigindo)</li>
+                                <li>Em caso de não obediência o uso do Taser é permitido.</li>
+                                <li>Matar alguém que não oferece riscos é TERMINANTEMENTE PROIBIDO.</li>
+                            </ul>
+                        </li>
+                        <li>É proibido o uso de veículo pessoal para realizar as atividades policiais. <em>Penalidade:</em> 1º repreensão e em caso de reincidência, expulsão.</li>
+                        <li>Repreensões resultam na expulsão do policial da corporação.</li>
+                    </ol>
+                </div>
+
+                <!-- === NOVA CAIXA DE PESQUISA / VERIFICAÇÃO DA DP (mesmo estilo das outras caixas) === -->
+                <div class="police-search" id="policeSearchBox">
+                    <label for="entradaPolicia"><strong>Pesquisar infração (Departamento Policial):</strong></label>
+                    <textarea id="entradaPolicia" placeholder="Descreva a ação (ex.: tentativa de sequestro, colisão fatal, suborno policial, resistência à prisão...)"></textarea>
+
+                    <div class="button-container" style="margin-top:12px;">
+                        <button id="verificarPoliciaBtn" onclick="verificarPolicia()">Verificar (Polícia)</button>
+                    </div>
+
+                    <div class="estatisticas" id="estatisticasPolicia" style="display: none; margin-top:12px;">
+                        <div class="estatistica">
+                            <div class="valor" id="pol_totalInfracoes">0</div>
+                            <div class="rotulo">Infrações Encontradas</div>
+                        </div>
+                        <div class="estatistica">
+                            <div class="valor" id="pol_categoriaCriminal">0</div>
+                            <div class="rotulo">Criminal</div>
+                        </div>
+                        <div class="estatistica">
+                            <div class="valor" id="pol_categoriaCivil">0</div>
+                            <div class="rotulo">Civil</div>
+                        </div>
+                        <div class="estatistica">
+                            <div class="valor" id="pol_categoriaAdm">0</div>
+                            <div class="rotulo">Administrativa</div>
+                        </div>
+                    </div>
+
+                    <section class="resultado" id="resultadoPolicia" style="margin-top:12px;">
+                        <!-- Resultados da verificação policial aparecerão aqui -->
+                    </section>
+                </div>
+            </section>
+            <!-- FIM DO CARD DA POLÍCIA -->
         </main>
     </div>
 
     <script>
-        // Todas as regras do ONESTATE
+        /* -------------------------------------------------------------------------
+           === BLOCO ORIGINAL DE REGRAS E FUNÇÕES (mantido exatamente como antes) ===
+           ------------------------------------------------------------------------- */
+        // (o objeto 'regras' e as funções originais foram mantidas exatamente como
+        // você tinha — abaixo re-inseri elas sem alteração lógica)
         const regras = {
             "NAME1": {
                 "keywords": ["nickname errado", "nick fora do rp", "nome sem rp", "nickname fora do rp"],
@@ -676,7 +795,7 @@
         };
 
         /**
-         * Função principal para verificar infrações
+         * Função principal para verificar infrações (originais)
          */
         function verificar() {
             // Obter e limpar o texto de entrada
@@ -737,7 +856,7 @@
         }
 
         /**
-         * Atualiza as estatísticas na interface
+         * Atualiza as estatísticas na interface (originais)
          */
         function atualizarEstatisticas(total, categorias) {
             document.getElementById('estatisticas').style.display = 'flex';
@@ -748,7 +867,7 @@
         }
 
         /**
-         * Exibe os resultados da verificação
+         * Exibe os resultados da verificação (originais)
          */
         function exibirResultados(infracoes) {
             const resultadoElemento = document.getElementById('resultado');
@@ -806,6 +925,275 @@
                 verificar();
             }
         });
+
+        /* -------------------------------------------------------------------------
+           === NOVO BLOCO: Regras/Infrações do Departamento Policial (DP) e lógica ===
+           ------------------------------------------------------------------------- */
+
+        // 1) Definição das infrações policiais (baseadas no que você enviou)
+        //    Cada regra tem keywords (palavras-chave) para correspondência simples.
+        //    As penalidades entre parênteses foram mantidas conforme você mandou.
+        const regrasPolicia = {
+            // Criminal (20 minutos)
+            "CRIM1": {
+                "keywords": ["captura das instituições", "captura instituições", "captura instituições públicas", "captura instituição pública", "captura instituição"],
+                "descricao": "Captura das instituições públicas",
+                "penalidade": "20 minutos",
+                "categoria": "Criminal"
+            },
+            "CRIM2": {
+                "keywords": ["tomada do poder", "tomada poder", "tomada do poder pela força", "tomada poder força"],
+                "descricao": "Tomada do poder pela força",
+                "penalidade": "20 minutos",
+                "categoria": "Criminal"
+            },
+            "CRIM3": {
+                "keywords": ["tomada de reféns", "tomada reféns", "sequestro", "tomada de refem", "refem"],
+                "descricao": "Tomada de reféns ou sequestro",
+                "penalidade": "20 minutos",
+                "categoria": "Criminal"
+            },
+            "CRIM4": {
+                "keywords": ["colisão fatal", "colisao fatal", "colisão fatal com um pedestre", "colisao fatal pedestre", "colisão com pedestre", "colisao com pedestre"],
+                "descricao": "Colisão fatal com um pedestre",
+                "penalidade": "20 minutos",
+                "categoria": "Criminal"
+            },
+            "CRIM5": {
+                "keywords": ["tentativa de roubo", "tentativa roubo"],
+                "descricao": "Tentativa de roubo",
+                "penalidade": "20 minutos",
+                "categoria": "Criminal"
+            },
+            "CRIM6": {
+                "keywords": ["roubo a um policial", "roubo policial", "assalto policial"],
+                "descricao": "Roubo a um policial",
+                "penalidade": "20 minutos",
+                "categoria": "Criminal"
+            },
+            "CRIM7": {
+                "keywords": ["entrada não autorizada", "entrada nao autorizada", "entrada não autorizada em território protegido", "entrada nao autorizada territorio protegido"],
+                "descricao": "Entrada não autorizada em território protegido",
+                "penalidade": "20 minutos",
+                "categoria": "Criminal"
+            },
+            "CRIM8": {
+                "keywords": ["disparos de arma", "disparos arma", "disparos de arma em local público", "disparo arma publico", "disparos em local publico", "sem porte"],
+                "descricao": "Disparos de arma em local público / Sem porte",
+                "penalidade": "20 minutos",
+                "categoria": "Criminal"
+            },
+            "CRIM9": {
+                "keywords": ["suborno de um policial", "suborno policial", "subornar policial", "suborno"],
+                "descricao": "Suborno de um policial",
+                "penalidade": "20 minutos",
+                "categoria": "Criminal"
+            },
+            "CRIM10": {
+                "keywords": ["assassinato de civil", "assassinato de policial", "assassinato civil", "assassinato policial", "assassinato de civil ou policial"],
+                "descricao": "Assassinato de civil ou policial - PROIBIDO APLICAÇÃO",
+                "penalidade": "PROIBIDO APLICAÇÃO",
+                "categoria": "Criminal"
+            },
+            "CRIM11": {
+                "keywords": ["ataque a um policial", "ataque policial", "atacar policial"],
+                "descricao": "Ataque a um policial - PROIBIDO APLICAÇÃO",
+                "penalidade": "PROIBIDO APLICAÇÃO",
+                "categoria": "Criminal"
+            },
+
+            // Civil (10 minutos)
+            "CIV1": {
+                "keywords": ["danos à propriedade pública", "danos a propriedade publica", "danos propriedade pública", "dano propriedade pública"],
+                "descricao": "Danos à propriedade pública",
+                "penalidade": "10 minutos",
+                "categoria": "Civil"
+            },
+            "CIV2": {
+                "keywords": ["danos à propriedade privada", "danos propriedade privada", "dano propriedade privada"],
+                "descricao": "Danos à propriedade privada",
+                "penalidade": "10 minutos",
+                "categoria": "Civil"
+            },
+            "CIV3": {
+                "keywords": ["trotes para a polícia", "trotes polícia", "trotes para a policia", "trotes policia", "trotes para emergencia", "trote"],
+                "descricao": "Trotes para a polícia/emergência",
+                "penalidade": "10 minutos",
+                "categoria": "Civil"
+            },
+            "CIV4": {
+                "keywords": ["arruaça", "arruaca", "arruacao", "arruacao no local"],
+                "descricao": "Arruaça",
+                "penalidade": "10 minutos",
+                "categoria": "Civil"
+            },
+            "CIV5": {
+                "keywords": ["assassinato", "ameaça de assassinato", "ameaça assassinato", "ameaça de morte", "assassinato ameaça"],
+                "descricao": "Assassinato, ameaça de assassinato",
+                "penalidade": "10 minutos",
+                "categoria": "Civil"
+            },
+            "CIV6": {
+                "keywords": ["insulto a funcionário público", "insulto funcionario publico", "insulto a funcionario", "insultar funcionário público"],
+                "descricao": "Insulto a funcionário público",
+                "penalidade": "10 minutos",
+                "categoria": "Civil"
+            },
+            "CIV7": {
+                "keywords": ["extorsão", "extorcao", "chantagem"],
+                "descricao": "Extorsão",
+                "penalidade": "10 minutos",
+                "categoria": "Civil"
+            },
+
+            // Administrativa (5 minutos)
+            "ADM1": {
+                "keywords": ["resistência à prisão", "resistencia a prisao", "resistencia à prisão", "resistencia prisão", "resistir prisão"],
+                "descricao": "Resistência à prisão",
+                "penalidade": "5 minutos",
+                "categoria": "Administrativa"
+            },
+            "ADM2": {
+                "keywords": ["desacato à autoridade", "desacato autoridade", "desacato", "desrespeitar autoridade"],
+                "descricao": "Desacato à autoridade",
+                "penalidade": "5 minutos",
+                "categoria": "Administrativa"
+            },
+            "ADM3": {
+                "keywords": ["auxílio à resistência", "auxilio resistencia", "auxílio resistência à prisão", "auxilio a resistencia"],
+                "descricao": "Auxílio à resistência à prisão",
+                "penalidade": "5 minutos",
+                "categoria": "Administrativa"
+            },
+            "ADM4": {
+                "keywords": ["infração das leis de trânsito", "infracao leis de transito", "infração trânsito", "violacao transito", "infração trânsito"],
+                "descricao": "Infração das leis de trânsito",
+                "penalidade": "5 minutos",
+                "categoria": "Administrativa"
+            },
+            "ADM5": {
+                "keywords": ["ataque a civis", "ataque civis", "violência contra civis", "agredir civis"],
+                "descricao": "Ataque a civis (violência)",
+                "penalidade": "5 minutos",
+                "categoria": "Administrativa"
+            },
+            "ADM6": {
+                "keywords": ["recusa a apresentar documentos", "recusa apresentar documentos", "recusar apresentar documentos"],
+                "descricao": "Recusa a apresentar documentos",
+                "penalidade": "5 minutos",
+                "categoria": "Administrativa"
+            }
+        };
+
+        /**
+         * Função para verificar apenas as infrações do Departamento Policial.
+         * A lógica é a mesma da função verificar() já existente — buscamos
+         * por palavras-chave no texto (lowercase) e listamos as infrações detectadas.
+         */
+        function verificarPolicia() {
+            const entrada = document.getElementById('entradaPolicia').value.trim().toLowerCase();
+
+            // Se vazio, avisa e esconde estatísticas
+            if (!entrada) {
+                document.getElementById('resultadoPolicia').innerHTML = `
+                    <div class="nenhum">
+                        ℹ️ Por favor, digite uma descrição para verificação policial.
+                    </div>
+                `;
+                document.getElementById('estatisticasPolicia').style.display = 'none';
+                return;
+            }
+
+            let encontradas = [];
+            let checadas = new Set();
+            let contadores = {
+                "Criminal": 0,
+                "Civil": 0,
+                "Administrativa": 0
+            };
+
+            // Percorrer regrasPolicia
+            for (const [codigo, dados] of Object.entries(regrasPolicia)) {
+                for (const palavra of dados.keywords) {
+                    if (entrada.includes(palavra) && !checadas.has(codigo)) {
+                        encontradas.push({
+                            codigo: codigo,
+                            descricao: dados.descricao,
+                            penalidade: dados.penalidade,
+                            categoria: dados.categoria
+                        });
+                        checadas.add(codigo);
+
+                        if (contadores.hasOwnProperty(dados.categoria)) {
+                            contadores[dados.categoria]++;
+                        }
+                        break;
+                    }
+                }
+            }
+
+            // Atualiza estatísticas do bloco policial
+            document.getElementById('estatisticasPolicia').style.display = 'flex';
+            document.getElementById('pol_totalInfracoes').textContent = encontradas.length;
+            document.getElementById('pol_categoriaCriminal').textContent = contadores.Criminal;
+            document.getElementById('pol_categoriaCivil').textContent = contadores.Civil;
+            document.getElementById('pol_categoriaAdm').textContent = contadores.Administrativa;
+
+            // Exibir resultados policiais
+            const resultado = document.getElementById('resultadoPolicia');
+
+            if (encontradas.length === 0) {
+                resultado.innerHTML = `
+                    <div class="nenhum">
+                        ✅ Nenhuma infração policial identificada com base na descrição fornecida.
+                    </div>
+                `;
+                return;
+            }
+
+            // Ordena por categoria e código
+            encontradas.sort((a,b) => {
+                if (a.categoria !== b.categoria) return a.categoria.localeCompare(b.categoria);
+                return a.codigo.localeCompare(b.codigo);
+            });
+
+            let html = `<h2>Infrações Polícias Identificadas (${encontradas.length})</h2>`;
+            let atual = '';
+            encontradas.forEach(item => {
+                if (item.categoria !== atual) {
+                    atual = item.categoria;
+                    html += `<h3 style="margin: 15px 0 10px 0; color: var(--police-accent); border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 5px;">${atual}</h3>`;
+                }
+                html += `
+                    <div class="regra">
+                        <p><b>${item.codigo}</b>: ${item.descricao}</p>
+                        <p><i>Penalidade:</i> ${item.penalidade}</p>
+                    </div>
+                `;
+            });
+
+            resultado.innerHTML = html;
+        }
+
+        // Permitir verificação policial pressionando Enter (não Shift+Enter)
+        document.getElementById('entradaPolicia').addEventListener('keydown', function(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                verificarPolicia();
+            }
+        });
+
+        /* Observações:
+           - Mantive  estrutura e função originais exatamente como estavam.
+           - A "verificação por IA" foi implementada aqui da mesma forma que no seu site:
+             correspondência por palavras-chave (lowercase) para identificar infrações.
+           - Se quiser, depois posso:
+             * adicionar sinônimos adicionais às keywords para aumentar a detecção,
+             * destacar as palavras encontradas no texto (visual),
+             * ou implementar uma verificação mais avançada (fuzzy / NLP).
+           Mas por enquanto fiz exatamente como pediu: sem alterar nada do original,
+           apenas adicionei o card destacado e a caixa de verificação policial.
+        */
     </script>
 </body>
 </html>

@@ -255,7 +255,7 @@
             <h1>🔎 Verificador de Infrações ONESTATE</h1>
             <p class="subtitle">Identifique rapidamente as infrações cometidas com base na descrição fornecida</p>
         </header>
-        
+
         <main>
             <!-- === SEÇÃO ORIGINAL (mantida 100% igual) === -->
             <section class="input-section">
@@ -266,11 +266,11 @@
                     aria-label="Descrição da infração"
                 ></textarea>
             </section>
-            
+
             <div class="button-container">
                 <button id="verificarBtn" onclick="verificar()">Verificar Infração</button>
             </div>
-            
+
             <div class="estatisticas" id="estatisticas" style="display: none;">
                 <div class="estatistica">
                     <div class="valor" id="totalInfracoes">0</div>
@@ -289,7 +289,7 @@
                     <div class="rotulo">Infrações Graves</div>
                 </div>
             </div>
-            
+
             <section class="resultado" id="resultado">
                 <!-- Resultados aparecerão aqui (original) -->
             </section>
@@ -800,7 +800,7 @@
         function verificar() {
             // Obter e limpar o texto de entrada
             const textoEntrada = document.getElementById('entrada').value.trim().toLowerCase();
-            
+
             // Verificar se há texto para analisar
             if (!textoEntrada) {
                 document.getElementById('resultado').innerHTML = `
@@ -838,7 +838,7 @@
                             categoria: dadosRegra.categoria
                         });
                         regrasVerificadas.add(codigo);
-                        
+
                         // Contar por categoria
                         if (contadoresCategoria.hasOwnProperty(dadosRegra.categoria)) {
                             contadoresCategoria[dadosRegra.categoria]++;
@@ -850,7 +850,7 @@
 
             // Atualizar estatísticas
             atualizarEstatisticas(infracoesEncontradas.length, contadoresCategoria);
-            
+
             // Exibir resultados
             exibirResultados(infracoesEncontradas);
         }
@@ -871,7 +871,7 @@
          */
         function exibirResultados(infracoes) {
             const resultadoElemento = document.getElementById('resultado');
-            
+
             if (infracoes.length === 0) {
                 resultadoElemento.innerHTML = `
                     <div class="nenhum">
@@ -893,9 +893,9 @@
             let htmlResultados = `
                 <h2>Infrações Identificadas (${infracoes.length})</h2>
             `;
-            
+
             let categoriaAtual = '';
-            
+
             infracoes.forEach(infracao => {
                 // Adicionar cabeçalho de categoria se mudou
                 if (infracao.categoria !== categoriaAtual) {
@@ -906,7 +906,7 @@
                         </h3>
                     `;
                 }
-                
+
                 htmlResultados += `
                     <div class="regra">
                         <p><b>${infracao.codigo}</b>: ${infracao.descricao}</p>
@@ -1183,17 +1183,14 @@
             }
         });
 
-        /* Observações:
-           - Mantive  estrutura e função originais exatamente como estavam.
-           - A "verificação por IA" foi implementada aqui da mesma forma que no seu site:
-             correspondência por palavras-chave (lowercase) para identificar infrações.
-           - Se quiser, depois posso:
-             * adicionar sinônimos adicionais às keywords para aumentar a detecção,
-             * destacar as palavras encontradas no texto (visual),
-             * ou implementar uma verificação mais avançada (fuzzy / NLP).
-           Mas por enquanto fiz exatamente como pediu: sem alterar nada do original,
-           apenas adicionei o card destacado e a caixa de verificação policial.
-        */
+        // CORREÇÃO: Garantir que a seção da polícia esteja visível
+        document.addEventListener('DOMContentLoaded', function() {
+            // Garantir que a seção da polícia esteja visível
+            const policeCard = document.getElementById('policeCard');
+            if (policeCard) {
+                policeCard.style.display = 'block';
+            }
+        });
     </script>
 </body>
 </html>
